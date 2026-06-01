@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RL Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- =============================================
+         SUMMARY BAR
+         Always visible at the top. Updates after every game.
+    ============================================= -->
+    <div id="summary-bar">
+      <div class="summary-stat">
+        <span class="summary-label">Total Games</span>
+        <span class="summary-value" id="total-games">0</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-label">Win Rate</span>
+        <span class="summary-value" id="win-rate">—</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-label">MVP Rate</span>
+        <span class="summary-value" id="mvp-rate">—</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-label">Streak</span>
+        <span class="summary-value" id="streak-display">—</span>
+      </div>
+    </div>
+
+    <!-- =============================================
+         START SESSION CARD
+         Shown when no session is active.
+         You enter your current MMR here before playing.
+         Hidden once a session starts.
+    ============================================= -->
+    <section id="start-session-card">
+      <h2>Start a Session</h2>
+      <div class="field-row">
+        <label for="start-mmr-input">Current MMR</label>
+        <input type="number" id="start-mmr-input" min="0" placeholder="e.g. 845">
+        <span class="hint">Enter your MMR before your first game</span>
+      </div>
+      <button id="start-session-btn">Start Session</button>
+    </section>
+
+    <!-- =============================================
+         LOG FORM
+         Shown only when a session is active.
+         Tab through every field without the mouse.
+    ============================================= -->
+    <section id="log-section">
+
+      <!-- Live MMR display — updates after every game logged -->
+      <div id="session-info-bar">
+        <div class="session-info-item">
+          <span class="session-info-label">Current MMR</span>
+          <span class="session-info-value" id="current-mmr-value">—</span>
+        </div>
+        <div class="session-info-item">
+          <span class="session-info-label">Session Net</span>
+          <!-- JavaScript adds class "net-positive" or "net-negative" to colour this -->
+          <span class="session-info-value" id="session-net-value">—</span>
+        </div>
+      </div>
+
+      <h2>Log a Game</h2>
+
+      <form id="log-form" novalidate>
+
+        <!-- MMR CHANGE: replaces the old Rank + W/L fields.
+             Type exactly what the game shows after it ends: +10 or -9.
+             The sign tells the app whether you won or lost. -->
+        <div class="field-row">
+          <label for="mmr-change-input">MMR Change</label>
+          <input type="text" id="mmr-change-input" placeholder="+10 or -9" autocomplete="off">
+          <span class="hint">Positive = Win &nbsp;&nbsp; Negative = Loss &nbsp;&nbsp; Tab ↹</span>
+        </div>
+
+        <!-- GOALS -->
+        <div class="field-row">
+          <label for="goals-input">Goals</label>
+          <input type="number" id="goals-input" name="goals" min="0" value="0">
+          <span class="hint">Tab ↹ to advance</span>
+        </div>
+
+        <!-- SAVES -->
+        <div class="field-row">
+          <label for="saves-input">Saves</label>
+          <input type="number" id="saves-input" name="saves" min="0" value="0">
+          <span class="hint">Tab ↹ to advance</span>
+        </div>
+
+        <!-- ASSISTS -->
+        <div class="field-row">
+          <label for="assists-input">Assists</label>
+          <input type="number" id="assists-input" name="assists" min="0" value="0">
+          <span class="hint">Tab ↹ to advance</span>
+        </div>
+
+        <!-- SHOTS -->
+        <div class="field-row">
+          <label for="shots-input">Shots</label>
+          <input type="number" id="shots-input" name="shots" min="0" value="0">
+          <span class="hint">Tab ↹ to advance</span>
+        </div>
+
+        <!-- MVP -->
+        <div class="field-row">
+          <label for="mvp-checkbox">MVP?</label>
+          <input type="checkbox" id="mvp-checkbox" name="mvp">
+          <span class="hint">Y = Yes &nbsp;&nbsp; N = No &nbsp;&nbsp; Space = Toggle &nbsp;&nbsp; Enter = Submit</span>
+        </div>
+
+        <!-- Two buttons side by side: log a game, or end the session -->
+        <div id="form-actions">
+          <button type="submit" id="submit-btn">Log Game</button>
+          <button type="button" id="end-session-btn">End Session</button>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- =============================================
+         COACHING ALERT (Phase 3)
+         Hidden by default. Appears when the AI detects
+         a meaningful pattern in your game data.
+    ============================================= -->
+    <div id="coaching-alert">
+      <div id="coaching-alert-header">
+        <span id="coaching-alert-label">AI Coaching Tip</span>
+        <button id="coaching-dismiss-btn">Dismiss</button>
+      </div>
+      <p id="coaching-alert-body">Analyzing your stats...</p>
+      <a id="coaching-concept-link" href="#concept-library-section">Learn more ↓</a>
+    </div>
+
+    <!-- =============================================
+         TILT WARNING
+         Hidden by default. Appears after 3+ consecutive
+         losses in the current session.
+    ============================================= -->
+    <div id="tilt-warning">
+      <span id="tilt-warning-text">
+        You've lost 3 or more games in a row this session. Consider taking a break.
+      </span>
+      <button id="tilt-dismiss-btn">Dismiss</button>
+    </div>
+
+    <!-- =============================================
+         STATS DASHBOARD
+         Average goals, saves, assists, shots per game.
+         Updates instantly when you log or delete a game.
+    ============================================= -->
+    <section id="stats-section">
+      <h2>Stats Dashboard</h2>
+      <div id="stats-cards">
+        <div class="stat-card">
+          <span class="stat-card-label">Avg Goals</span>
+          <span class="stat-card-value" id="avg-goals">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Avg Saves</span>
+          <span class="stat-card-value" id="avg-saves">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Avg Assists</span>
+          <span class="stat-card-value" id="avg-assists">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Avg Shots</span>
+          <span class="stat-card-value" id="avg-shots">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =============================================
+         IN-SESSION MMR CHART
+         Tracks MMR game by game within the current session.
+         Resets when you start a new session.
+    ============================================= -->
+    <section id="in-session-chart-section">
+      <h2>This Session</h2>
+      <p id="no-session-chart-msg">Start a session above to track your MMR game by game.</p>
+      <div id="in-session-chart-container">
+        <canvas id="in-session-chart"></canvas>
+      </div>
+    </section>
+
+    <!-- =============================================
+         LONG-TERM MMR CHART
+         One point per completed session (the ending MMR).
+         Only updates when you click End Session.
+    ============================================= -->
+    <section id="long-term-chart-section">
+      <h2>MMR Over Time</h2>
+      <p id="no-long-term-chart-msg">End your first session to start tracking your long-term MMR trend.</p>
+      <div id="long-term-chart-container">
+        <canvas id="long-term-chart"></canvas>
+      </div>
+    </section>
+
+    <!-- =============================================
+         SESSION LOG
+         One card per completed session, newest first.
+         Populated when you click End Session.
+    ============================================= -->
+    <section id="session-log-section">
+      <h2>Session Log</h2>
+      <p id="no-sessions-msg">No completed sessions yet. Click "End Session" after your first gaming sit-down.</p>
+      <div id="session-list"></div>
+    </section>
+
+    <!-- =============================================
+         GAME LOG TABLE
+         Every individual game, newest first.
+         Each row has a Delete button.
+    ============================================= -->
+    <section id="game-log-section">
+      <h2>Game Log</h2>
+      <p id="no-games-msg">No games logged yet. Start a session and log your first game above!</p>
+      <table id="game-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>MMR ±</th>
+            <th>Result</th>
+            <th>Goals</th>
+            <th>Saves</th>
+            <th>Assists</th>
+            <th>Shots</th>
+            <th>MVP</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="game-table-body"></tbody>
+      </table>
+    </section>
+
+    <!-- =============================================
+         RL CONCEPT LIBRARY (Phase 3)
+         Eight foundational concepts explained in plain
+         English. Coaching alerts link directly to the
+         relevant card. Click any card to expand it.
+    ============================================= -->
+    <section id="concept-library-section">
+      <h2>RL Concept Library</h2>
+      <p id="concept-library-intro">
+        Eight concepts every Gold player should understand. Your coaching tips link here when a relevant pattern is spotted.
+      </p>
+      <div id="concept-grid"></div>
+    </section>
+
+  </div><!-- end #app -->
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>

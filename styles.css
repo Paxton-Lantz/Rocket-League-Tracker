@@ -1,0 +1,755 @@
+/* =============================================
+   RESET
+   Browsers have their own default styles that
+   vary between Chrome, Firefox, Safari, etc.
+   This block zeroes them out so we start clean.
+============================================= */
+* {
+  box-sizing: border-box; /* padding doesn't add to an element's width */
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================
+   BASE / PAGE
+============================================= */
+body {
+  font-family: system-ui, -apple-system, sans-serif; /* uses the OS's default font */
+  background: #f0f0f0;
+  color: #222;
+  padding: 24px;
+}
+
+/* Centers everything and caps the width so it doesn't stretch too wide */
+#app {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e0e0e0;
+  color: #333;
+}
+
+/* All the main panels (form, chart, game log) share this card style */
+section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+/* =============================================
+   SUMMARY BAR
+   The three stats at the top of the page.
+============================================= */
+#summary-bar {
+  display: flex;     /* lays the three stats side by side */
+  gap: 40px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px 24px;
+  margin-bottom: 20px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column; /* label on top, number below */
+  gap: 2px;
+}
+
+.summary-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+
+.summary-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #222;
+  line-height: 1;
+}
+
+/* =============================================
+   LOG FORM
+============================================= */
+
+/* Each label + input + hint lives in a .field-row */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+/* Fixed-width labels so all the inputs line up vertically */
+.field-row label {
+  width: 72px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  color: #444;
+  flex-shrink: 0; /* don't let the label squeeze smaller */
+}
+
+/* Shared style for the rank dropdown and number inputs */
+.field-row select,
+.field-row input[type="number"] {
+  width: 160px;
+  padding: 7px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  background: #fff;
+  color: #222;
+}
+
+/* Blue outline when an input is focused (gives keyboard users a clear target) */
+.field-row select:focus,
+.field-row input[type="number"]:focus,
+#result-selector:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+/* ---- W/L Result Selector ----
+   This is a <div> styled to look like an input field.
+   JavaScript handles the W and L keypresses. */
+#result-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 36px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: default;
+  background: #fafafa;
+  user-select: none; /* prevents text from being highlighted when clicking */
+  color: #aaa;
+}
+
+/* Green style when Win is selected */
+#result-selector.win {
+  background: #eaf6ec;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+/* Red style when Loss is selected */
+#result-selector.loss {
+  background: #fdecea;
+  border-color: #e53935;
+  color: #b71c1c;
+}
+
+/* ---- MVP Checkbox ---- */
+.field-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4a90e2; /* colors the checkmark blue in modern browsers */
+}
+
+/* ---- Keyboard hint text ----
+   The small grey text to the right of each field. */
+.hint {
+  font-size: 0.72rem;
+  color: #aaa;
+  font-family: monospace;
+}
+
+/* ---- Submit button ----
+   Left margin lines it up with the input fields. */
+#submit-btn {
+  display: block;
+  margin-top: 6px;
+  margin-left: 84px; /* label width (72px) + gap (12px) = 84px */
+  padding: 8px 28px;
+  background: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#submit-btn:hover {
+  background: #3178c6;
+}
+
+#submit-btn:active {
+  background: #2563a8;
+}
+
+/* ---- Green flash on successful submit ----
+   JavaScript adds the .success class for a moment, then removes it.
+   The transition on #log-section makes it fade smoothly. */
+#log-section {
+  transition: background-color 0.4s ease;
+}
+
+#log-section.success {
+  background-color: #eaf6ec;
+}
+
+/* =============================================
+   CHART
+============================================= */
+
+/* Controls the height of the chart area.
+   Chart.js fills this container. */
+#chart-container {
+  position: relative;
+  height: 280px;
+}
+
+/* =============================================
+   GAME LOG TABLE
+============================================= */
+#no-games-msg {
+  color: #aaa;
+  font-style: italic;
+  text-align: center;
+  padding: 16px 0;
+}
+
+#game-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+#game-table th {
+  text-align: center;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  background: #f9f9f9;
+  border-bottom: 2px solid #eee;
+}
+
+#game-table td {
+  text-align: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+}
+
+/* Subtle row highlight on hover */
+#game-table tbody tr:hover {
+  background: #f7f7f7;
+}
+
+/* Win = green text, Loss = red text */
+.result-win {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.result-loss {
+  color: #b71c1c;
+  font-weight: 700;
+}
+
+/* Delete button — looks subtle until hovered */
+.delete-btn {
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.delete-btn:hover {
+  background: #fdecea;
+  border-color: #e53935;
+  color: #b71c1c;
+}
+
+/* =============================================
+   STREAK (added to summary bar)
+   The summary-value element gets one of these
+   classes so the streak number is coloured.
+============================================= */
+.streak-win {
+  color: #2e7d32; /* green */
+}
+
+.streak-loss {
+  color: #b71c1c; /* red */
+}
+
+/* =============================================
+   TILT WARNING
+   An amber card that appears between the log
+   form and the stats dashboard when you lose
+   3+ games in a row in the current session.
+============================================= */
+#tilt-warning {
+  /* Hidden by default. JavaScript sets style.display = "flex" to show this.
+     Inline styles always override stylesheet rules, so that's all it takes.
+     The flex properties below (align-items etc.) take effect as soon as
+     the element becomes a flex container. */
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fff8e1;
+  border: 1px solid #f9a825;
+  border-left: 4px solid #f9a825; /* thick left border makes it stand out */
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+}
+
+/* Text and button inside the tilt warning */
+#tilt-warning-text {
+  font-size: 0.92rem;
+  color: #5d4037; /* dark brown — readable on the amber background */
+  font-weight: 500;
+}
+
+#tilt-dismiss-btn {
+  padding: 5px 14px;
+  background: none;
+  border: 1px solid #f9a825;
+  border-radius: 4px;
+  color: #7b5800;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0; /* don't let the button squash when the text is long */
+}
+
+#tilt-dismiss-btn:hover {
+  background: #fff3cd;
+}
+
+/* =============================================
+   STATS DASHBOARD
+============================================= */
+#stats-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+#stats-rank-filter {
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #222;
+}
+
+#stats-rank-filter:focus {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+/* Four stat cards laid out side by side */
+#stats-cards {
+  display: flex;
+  gap: 14px;
+}
+
+.stat-card {
+  flex: 1; /* all four cards share the available width equally */
+  background: #f9f9f9;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.stat-card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+
+.stat-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #222;
+  line-height: 1;
+}
+
+/* =============================================
+   SESSION LOG
+============================================= */
+#no-sessions-msg {
+  color: #aaa;
+  font-style: italic;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* One card per session */
+.session-card {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.session-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Header row: session title on the left, outcome badge on the right */
+.session-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.session-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Small pill badge showing "Win Session", "Loss Session", or "Even" */
+.session-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  border-radius: 3px;
+}
+
+.session-badge-win {
+  background: #eaf6ec;
+  color: #2e7d32;
+}
+
+.session-badge-loss {
+  background: #fdecea;
+  color: #b71c1c;
+}
+
+.session-badge-even {
+  background: #f0f0f0;
+  color: #666;
+}
+
+/* Row of stats below the header: Record, Games, Avg Goals, etc. */
+.session-stats-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap; /* wrap to a new line if the window is narrow */
+}
+
+.session-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-stat-label {
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  font-weight: 600;
+}
+
+.session-stat-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+}
+
+/* =============================================
+   COACHING ALERT (Phase 3)
+   Blue card — visually distinct from the amber
+   tilt warning. Hidden by default; JavaScript
+   shows it when a pattern is detected.
+============================================= */
+#coaching-alert {
+  /* Hidden by default. JavaScript sets style.display = "block" to show it. */
+  display: none;
+  background: #e8f0fe;
+  border: 1px solid #4a90e2;
+  border-left: 4px solid #4a90e2;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+/* Header row: "AI Coaching Tip" label on left, Dismiss button on right */
+#coaching-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#coaching-alert-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4a90e2;
+}
+
+#coaching-alert-body {
+  font-size: 0.92rem;
+  color: #1a3a6b;
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+/* "Learn more ↓" link — hidden while the tip is loading, shown after */
+#coaching-concept-link {
+  display: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4a90e2;
+  text-decoration: none;
+}
+
+#coaching-concept-link:hover {
+  text-decoration: underline;
+}
+
+#coaching-dismiss-btn {
+  padding: 4px 12px;
+  background: none;
+  border: 1px solid #4a90e2;
+  border-radius: 4px;
+  color: #4a90e2;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+#coaching-dismiss-btn:hover {
+  background: #d0e4ff;
+}
+
+/* =============================================
+   CONCEPT LIBRARY (Phase 3)
+============================================= */
+#concept-library-intro {
+  font-size: 0.88rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+/* 2-column grid of concept cards */
+#concept-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.concept-card {
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.concept-card:hover {
+  border-color: #bbb;
+}
+
+/* Highlighted when a coaching alert links to this concept */
+.concept-card.highlighted {
+  border-color: #4a90e2;
+  background: #e8f0fe;
+}
+
+.concept-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.concept-card-summary {
+  font-size: 0.82rem;
+  color: #666;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+/* "Read more ▼" toggle button */
+.concept-toggle {
+  font-size: 0.78rem;
+  color: #4a90e2;
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.concept-toggle:hover {
+  text-decoration: underline;
+}
+
+/* Full concept text — hidden until the card is expanded */
+.concept-full-content {
+  display: none;
+  margin-top: 12px;
+  font-size: 0.88rem;
+  color: #333;
+  line-height: 1.65;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+
+  /* Preserve line breaks in the concept text */
+  white-space: pre-line;
+}
+
+/* When the card has the "expanded" class, show the full content */
+.concept-card.expanded .concept-full-content {
+  display: block;
+}
+
+/* =============================================
+   START SESSION CARD
+   Shown when no session is active. Replaces the
+   log form until the user enters their MMR and
+   clicks Start Session.
+============================================= */
+#start-session-card {
+  /* Uses the same card style as other sections */
+}
+
+#start-session-btn {
+  display: block;
+  margin-top: 6px;
+  margin-left: 84px;
+  padding: 8px 28px;
+  background: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#start-session-btn:hover { background: #3178c6; }
+#start-session-btn:active { background: #2563a8; }
+
+/* =============================================
+   SESSION INFO BAR
+   Shows Current MMR and Session Net change
+   at the top of the log form while a session
+   is active.
+============================================= */
+#session-info-bar {
+  display: flex;
+  gap: 32px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 18px;
+}
+
+.session-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-info-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+}
+
+.session-info-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #222;
+  line-height: 1;
+}
+
+/* Session net change coloured green or red */
+.net-positive { color: #2e7d32; }
+.net-negative { color: #b71c1c; }
+
+/* =============================================
+   FORM ACTIONS ROW
+   Log Game and End Session buttons side by side.
+============================================= */
+#form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  margin-left: 84px;
+}
+
+#end-session-btn {
+  padding: 8px 20px;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+}
+
+#end-session-btn:hover {
+  background: #f5f5f5;
+  border-color: #aaa;
+  color: #333;
+}
+
+/* =============================================
+   TWO-CHART LAYOUT
+   In-session and long-term charts each get their
+   own section with the same container height.
+============================================= */
+#in-session-chart-container,
+#long-term-chart-container {
+  position: relative;
+  height: 260px;
+}
+
+#no-session-chart-msg,
+#no-long-term-chart-msg {
+  color: #aaa;
+  font-style: italic;
+  text-align: center;
+  padding: 16px 0;
+}
