@@ -50,7 +50,8 @@ Every logged game is stored as a JavaScript object in this exact shape:
   saves: 1,                // integer 0–99
   assists: 0,              // integer 0–99
   shots: 4,                // integer 0–99
-  mvp: true                // boolean
+  mvp: true,               // boolean
+  opponentMmr: 845         // integer or null — opponent's MMR, optional, logged manually
 }
 ```
 

@@ -37,6 +37,7 @@
         <button class="theme-btn" data-theme="synthwave"  title="Synthwave"  aria-label="Synthwave theme"></button>
         <button class="theme-btn" data-theme="carbon"     title="Carbon"     aria-label="Carbon theme"></button>
       </div>
+      <button id="minimize-btn" title="Minimize to widget">⊟</button>
     </header>
 
     <!-- =============================================
@@ -60,6 +61,18 @@
         <span class="summary-label">Streak</span>
         <span class="summary-value" id="streak-display">—</span>
       </div>
+    </div>
+
+    <!-- =============================================
+         MODE TABS
+         Filters all stats, charts, and history to
+         the selected game mode.
+    ============================================= -->
+    <div id="mode-tabs">
+      <button class="mode-tab" data-mode="1v1">1v1</button>
+      <button class="mode-tab" data-mode="2v2">2v2</button>
+      <button class="mode-tab active" data-mode="3v3">3v3</button>
+      <button class="mode-tab" data-mode="2v2 Heatseeker">Heatseeker</button>
     </div>
 
     <!-- =============================================
@@ -108,19 +121,19 @@
       <div id="perf-winrate">
         <svg id="winrate-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
           <!-- Track -->
-          <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(0,40,160,0.07)" stroke-width="9"/>
+          <circle cx="50" cy="50" r="38" fill="none" stroke-width="9" style="stroke: var(--border-strong)"/>
           <!-- Progress arc — stroke-dasharray set by JS -->
           <circle id="winrate-arc" cx="50" cy="50" r="38" fill="none"
-            stroke="#2563eb" stroke-width="9" stroke-linecap="round"
+            stroke-width="9" stroke-linecap="round"
             stroke-dasharray="0 238.76"
-            transform="rotate(-90 50 50)"/>
+            transform="rotate(-90 50 50)" style="stroke: var(--accent)"/>
           <!-- Center text -->
           <text id="winrate-pct" x="50" y="46" text-anchor="middle"
             font-family="system-ui,-apple-system,sans-serif"
-            font-size="20" font-weight="900" fill="#0c1a3a">—</text>
+            font-size="20" font-weight="900" style="fill: var(--text)">—</text>
           <text x="50" y="61" text-anchor="middle"
             font-family="system-ui,-apple-system,sans-serif"
-            font-size="7" font-weight="700" fill="#9aa4be" letter-spacing="1.5">WIN RATE</text>
+            font-size="7" font-weight="700" letter-spacing="1.5" style="fill: var(--text-2)">WIN RATE</text>
         </svg>
       </div>
 
@@ -165,6 +178,8 @@
           <span id="start-rank-name"></span>
         </div>
       </div>
+
+      <p id="active-mode-notice"></p>
       <button id="start-session-btn">Start Session</button>
 
       <!-- Rank icon strip — shows all icons available so far as a proof of concept -->
@@ -211,6 +226,16 @@
           <span class="hint">Positive = Win &nbsp;&nbsp; Negative = Loss &nbsp;&nbsp; Tab ↹</span>
         </div>
 
+        <!-- OPPONENT MMR — optional, shows their rank live as you type -->
+        <div class="field-row">
+          <label for="opp-mmr-input">Opp MMR</label>
+          <input type="number" id="opp-mmr-input" min="0" placeholder="optional">
+          <div id="opp-rank-display">
+            <img id="opp-rank-icon" src="" alt="" />
+            <span id="opp-rank-name"></span>
+          </div>
+        </div>
+
         <!-- GOALS -->
         <div class="field-row">
           <label for="goals-input">Goals</label>
@@ -239,8 +264,8 @@
           <span class="hint">Tab ↹ to advance</span>
         </div>
 
-        <!-- MVP -->
-        <div class="field-row">
+        <!-- MVP — only shown when result is a win -->
+        <div class="field-row" id="mvp-row" style="display:none">
           <label for="mvp-checkbox">MVP?</label>
           <input type="checkbox" id="mvp-checkbox" name="mvp">
           <span class="hint">Y = Yes &nbsp;&nbsp; N = No &nbsp;&nbsp; Space = Toggle &nbsp;&nbsp; Enter = Submit</span>
@@ -266,6 +291,7 @@
         <button id="coaching-dismiss-btn">Dismiss</button>
       </div>
       <p id="coaching-alert-body">Analyzing your stats...</p>
+      <div id="coaching-packs"></div>
       <a id="coaching-concept-link" href="#concept-library-section">Learn more ↓</a>
     </div>
 
@@ -306,6 +332,9 @@
           <span class="stat-card-value" id="avg-shots">—</span>
         </div>
       </div>
+
+      <!-- Matchup breakdown — populated by JS once enough opponent MMR data exists -->
+      <div id="matchup-row"></div>
     </section>
 
     <!-- =============================================
@@ -345,6 +374,18 @@
       <div id="session-list"></div>
     </section>
 
+    <!-- Floating chart popup — shown on session card hover -->
+    <div id="session-hover-popup">
+      <div id="session-hover-header">
+        <span id="session-hover-title"></span>
+        <span id="session-hover-net"></span>
+      </div>
+      <div id="session-hover-record"></div>
+      <div id="session-hover-chart-wrap">
+        <canvas id="session-hover-canvas"></canvas>
+      </div>
+    </div>
+
     <!-- =============================================
          GAME LOG TABLE
          Every individual game, newest first.
@@ -360,6 +401,7 @@
             <th>Date</th>
             <th>MMR ±</th>
             <th>Result</th>
+            <th>Opp</th>
             <th>Goals</th>
             <th>Saves</th>
             <th>Assists</th>
@@ -381,8 +423,9 @@
     <section id="concept-library-section">
       <h2>RL Concept Library</h2>
       <p id="concept-library-intro">
-        Eight concepts every Gold player should understand. Your coaching tips link here when a relevant pattern is spotted.
+        Eight foundational concepts. Content adapts to your current rank. Your coaching alerts link here when a pattern is spotted.
       </p>
+      <div id="concept-rank-context"></div>
       <div id="concept-grid"></div>
     </section>
 
@@ -397,6 +440,31 @@
     <img id="rankup-icon-large" src="" alt="" />
     <div id="rankup-label"></div>
     <div id="rankup-rank-name"></div>
+  </div>
+
+  <!-- Mini widget: compact draggable overlay for gaming sessions -->
+  <div id="mini-widget">
+    <div id="mini-drag-handle">
+      <span id="mini-title">RL Tracker</span>
+      <button id="mini-restore-btn" title="Restore full view">⤢</button>
+    </div>
+    <div id="mini-rank-row">
+      <img id="mini-rank-icon" src="" alt="" />
+      <div>
+        <div id="mini-rank-name">—</div>
+        <div id="mini-mmr">—</div>
+      </div>
+    </div>
+    <div id="mini-stats-row">
+      <div class="mini-stat">
+        <span class="mini-stat-label">Session</span>
+        <span class="mini-stat-value" id="mini-session-net">—</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Streak</span>
+        <span class="mini-stat-value" id="mini-streak">—</span>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
