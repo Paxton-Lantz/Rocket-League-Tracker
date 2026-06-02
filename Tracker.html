@@ -8,7 +8,36 @@
 </head>
 <body>
 
+  <!-- Background depth layers (parallax blobs) -->
+  <div id="blob-1" aria-hidden="true"></div>
+  <div id="blob-2" aria-hidden="true"></div>
+  <div id="blob-3" aria-hidden="true"></div>
+
+  <!-- Film grain overlay -->
+  <div id="grain" aria-hidden="true"></div>
+
+  <!-- Custom cursor -->
+  <div id="cursor-ring" aria-hidden="true"></div>
+  <div id="cursor-dot" aria-hidden="true"></div>
+
   <div id="app">
+
+    <!-- Hero header -->
+    <header id="app-header">
+      <div id="app-wordmark">RL</div>
+      <div id="header-text">
+        <h1 id="app-title">Tracker</h1>
+        <p id="app-subtitle">Rocket League &middot; Personal Stats &amp; AI Coaching</p>
+      </div>
+      <!-- Theme switcher — five swatch circles, one per theme -->
+      <div id="theme-switcher">
+        <button class="theme-btn" data-theme="ghost"      title="Ghost"      aria-label="Light theme"></button>
+        <button class="theme-btn" data-theme="midnight"   title="Midnight"   aria-label="Midnight theme"></button>
+        <button class="theme-btn" data-theme="supersonic" title="Supersonic" aria-label="Supersonic theme"></button>
+        <button class="theme-btn" data-theme="synthwave"  title="Synthwave"  aria-label="Synthwave theme"></button>
+        <button class="theme-btn" data-theme="carbon"     title="Carbon"     aria-label="Carbon theme"></button>
+      </div>
+    </header>
 
     <!-- =============================================
          SUMMARY BAR
@@ -34,6 +63,93 @@
     </div>
 
     <!-- =============================================
+         RANK HERO
+         Focal point of the page. Updates live as
+         MMR changes during a session.
+    ============================================= -->
+    <section id="rank-hero" data-tier="">
+
+      <!-- Floating ambient particles (CSS animated) -->
+      <div class="rank-particle rp-1"></div>
+      <div class="rank-particle rp-2"></div>
+      <div class="rank-particle rp-3"></div>
+      <div class="rank-particle rp-4"></div>
+
+      <!-- Icon + glow rings -->
+      <div id="rank-hero-icon-wrap">
+        <div id="rank-hero-ring-2"></div>
+        <div id="rank-hero-ring-1"></div>
+        <img id="rank-hero-icon" src="" alt="" />
+      </div>
+
+      <!-- Rank info -->
+      <div id="rank-hero-content">
+        <div id="rank-hero-eyebrow">Current Rank</div>
+        <div id="rank-hero-name">—</div>
+        <div id="rank-hero-mmr-display">Start a session to track your rank</div>
+        <div id="rank-hero-progress-wrap">
+          <div id="rank-hero-bar-track">
+            <div id="rank-hero-bar-fill"></div>
+          </div>
+          <div id="rank-hero-progress-label"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =============================================
+         PERFORMANCE OVERVIEW
+         Always visible. Win-rate ring, recent form
+         strip, and spotlight stats.
+    ============================================= -->
+    <section id="performance-section">
+
+      <!-- Win-rate SVG donut ring -->
+      <div id="perf-winrate">
+        <svg id="winrate-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <!-- Track -->
+          <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(0,40,160,0.07)" stroke-width="9"/>
+          <!-- Progress arc — stroke-dasharray set by JS -->
+          <circle id="winrate-arc" cx="50" cy="50" r="38" fill="none"
+            stroke="#2563eb" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="0 238.76"
+            transform="rotate(-90 50 50)"/>
+          <!-- Center text -->
+          <text id="winrate-pct" x="50" y="46" text-anchor="middle"
+            font-family="system-ui,-apple-system,sans-serif"
+            font-size="20" font-weight="900" fill="#0c1a3a">—</text>
+          <text x="50" y="61" text-anchor="middle"
+            font-family="system-ui,-apple-system,sans-serif"
+            font-size="7" font-weight="700" fill="#9aa4be" letter-spacing="1.5">WIN RATE</text>
+        </svg>
+      </div>
+
+      <!-- Last 10 games form strip -->
+      <div id="perf-form">
+        <div class="perf-label">Last 10 Games</div>
+        <div id="form-dots"></div>
+        <div id="form-summary"></div>
+      </div>
+
+      <!-- Spotlight stats: peak MMR, best session, record streak -->
+      <div id="perf-spotlight">
+        <div class="spotlight-stat">
+          <span class="spotlight-label">Peak MMR</span>
+          <span class="spotlight-value" id="stat-peak-mmr">—</span>
+        </div>
+        <div class="spotlight-stat">
+          <span class="spotlight-label">Best Session</span>
+          <span class="spotlight-value" id="stat-best-session">—</span>
+        </div>
+        <div class="spotlight-stat">
+          <span class="spotlight-label">Record Streak</span>
+          <span class="spotlight-value" id="stat-record-streak">—</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- =============================================
          START SESSION CARD
          Shown when no session is active.
          You enter your current MMR here before playing.
@@ -44,9 +160,15 @@
       <div class="field-row">
         <label for="start-mmr-input">Current MMR</label>
         <input type="number" id="start-mmr-input" min="0" placeholder="e.g. 845">
-        <span class="hint">Enter your MMR before your first game</span>
+        <div id="start-rank-display">
+          <img id="start-rank-icon" src="" alt="" />
+          <span id="start-rank-name"></span>
+        </div>
       </div>
       <button id="start-session-btn">Start Session</button>
+
+      <!-- Rank icon strip — shows all icons available so far as a proof of concept -->
+      <div id="rank-strip"></div>
     </section>
 
     <!-- =============================================
@@ -66,6 +188,13 @@
           <span class="session-info-label">Session Net</span>
           <!-- JavaScript adds class "net-positive" or "net-negative" to colour this -->
           <span class="session-info-value" id="session-net-value">—</span>
+        </div>
+        <div class="session-info-item" id="rank-display-item">
+          <span class="session-info-label">Rank</span>
+          <div id="rank-display">
+            <img id="rank-icon" src="" alt="" />
+            <span id="rank-name"></span>
+          </div>
         </div>
       </div>
 
@@ -258,6 +387,17 @@
     </section>
 
   </div><!-- end #app -->
+
+  <!-- Dark backdrop — page dims so additive glow particles actually pop -->
+  <div id="rankup-bg" aria-hidden="true"></div>
+  <!-- Rank-up particle canvas -->
+  <canvas id="rankup-canvas" aria-hidden="true"></canvas>
+  <!-- Rank-up central overlay: icon + text -->
+  <div id="rankup-overlay" aria-hidden="true">
+    <img id="rankup-icon-large" src="" alt="" />
+    <div id="rankup-label"></div>
+    <div id="rankup-rank-name"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>

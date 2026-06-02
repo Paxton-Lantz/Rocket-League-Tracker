@@ -21,6 +21,250 @@ const CLAUDE_API_KEY = "sk-ant-api03-RnmcBvIU8ZUDfw6sS7wCiP6tAfV4px7TsUopingeGfP
 
 
 // ============================================================
+// RANK DATA
+// MMR thresholds and icon paths for each rank.
+// Thresholds are approximate standard 3v3 competitive values.
+// Add more entries to RANK_ICONS as new art is sourced.
+// ============================================================
+
+const RANK_THRESHOLDS = [
+  { name: "Bronze I",          mmr: 0    },
+  { name: "Bronze II",         mmr: 175  },
+  { name: "Bronze III",        mmr: 295  },
+  { name: "Silver I",          mmr: 395  },
+  { name: "Silver II",         mmr: 455  },
+  { name: "Silver III",        mmr: 515  },
+  { name: "Gold I",            mmr: 575  },
+  { name: "Gold II",           mmr: 635  },
+  { name: "Gold III",          mmr: 695  },
+  { name: "Platinum I",        mmr: 755  },
+  { name: "Platinum II",       mmr: 815  },
+  { name: "Platinum III",      mmr: 875  },
+  { name: "Diamond I",         mmr: 935  },
+  { name: "Diamond II",        mmr: 995  },
+  { name: "Diamond III",       mmr: 1055 },
+  { name: "Champion I",        mmr: 1115 },
+  { name: "Champion II",       mmr: 1195 },
+  { name: "Champion III",      mmr: 1275 },
+  { name: "Grand Champion I",  mmr: 1355 },
+  { name: "Grand Champion II", mmr: 1435 },
+  { name: "Grand Champion III",mmr: 1515 },
+  { name: "Supersonic Legend", mmr: 1595 }
+];
+
+// Map rank name → icon file path.
+const RANK_ICONS = {
+  "Bronze I":            "ranks/Bronze_I.png",
+  "Bronze II":           "ranks/Bronze_II.png",
+  "Bronze III":          "ranks/Bronze_III.png",
+  "Silver I":            "ranks/Silver_I.png",
+  "Silver II":           "ranks/Silver_II.png",
+  "Silver III":          "ranks/Silver_III.png",
+  "Gold I":              "ranks/Gold_I.png",
+  "Gold II":             "ranks/Gold_II.png",
+  "Gold III":            "ranks/Gold_III.png",
+  "Platinum I":          "ranks/Platinum_I.png",
+  "Platinum II":         "ranks/Platinum_II.png",
+  "Platinum III":        "ranks/Platinum_III.png",
+  "Diamond I":           "ranks/Diamond_I.png",
+  "Diamond II":          "ranks/Diamond_II.png",
+  "Diamond III":         "ranks/Diamond_III.png",
+  "Champion I":          "ranks/Champion_I.png",
+  "Champion II":         "ranks/Champion_II.png",
+  "Champion III":        "ranks/Champion_III.png",
+  "Grand Champion I":    "ranks/Grand_Champion_I.png",
+  "Grand Champion II":   "ranks/Grand_Champion_II.png",
+  "Grand Champion III":  "ranks/Grand_Champion_III.png",
+  "Supersonic Legend":   "ranks/Supersonic_Legend.png"
+};
+
+// ---- Rank tier color system ----
+// Each tier has a primary color and a glow color used in the rank hero section.
+var RANK_TIER_DATA = {
+  "Bronze":           { primary: "#cd7f32", glow: "rgba(205,127,50,0.40)"  },
+  "Silver":           { primary: "#b0bcc8", glow: "rgba(176,188,200,0.40)" },
+  "Gold":             { primary: "#ffd700", glow: "rgba(255,215,0,0.45)"   },
+  "Platinum":         { primary: "#38bdf8", glow: "rgba(56,189,248,0.42)"  },
+  "Diamond":          { primary: "#3b82f6", glow: "rgba(59,130,246,0.42)"  },
+  "Champion":         { primary: "#a855f7", glow: "rgba(168,85,247,0.42)"  },
+  "Grand Champion":   { primary: "#ef4444", glow: "rgba(239,68,68,0.42)"   },
+  "Supersonic Legend":{ primary: "#ec4899", glow: "rgba(236,72,153,0.42)"  }
+};
+
+// Extracts the tier name from a full rank name.
+// "Gold II" → "Gold",  "Grand Champion I" → "Grand Champion"
+function getRankTier(rankName) {
+  if (!rankName || rankName === "—") return null;
+  if (rankName === "Supersonic Legend")         return "Supersonic Legend";
+  if (rankName.startsWith("Grand Champion"))    return "Grand Champion";
+  return rankName.split(" ").slice(0, -1).join(" ");
+}
+
+// Returns progress within the current rank division.
+function getRankProgress(mmr) {
+  if (isNaN(mmr)) return null;
+  var idx  = getRankIndex(mmr);
+  var next = RANK_THRESHOLDS[idx + 1];
+  if (!next) return { pct: 100, mmrToNext: 0, nextName: null };
+  var range = next.mmr - RANK_THRESHOLDS[idx].mmr;
+  var done  = mmr - RANK_THRESHOLDS[idx].mmr;
+  return {
+    pct:       Math.min(100, Math.round((done / range) * 100)),
+    mmrToNext: next.mmr - mmr,
+    nextName:  next.name
+  };
+}
+
+// Drives the big rank hero section at the top of the page.
+function updateRankHero() {
+  var hero      = document.getElementById("rank-hero");
+  var iconEl    = document.getElementById("rank-hero-icon");
+  var nameEl    = document.getElementById("rank-hero-name");
+  var mmrEl     = document.getElementById("rank-hero-mmr-display");
+  var fillEl    = document.getElementById("rank-hero-bar-fill");
+  var progWrap  = document.getElementById("rank-hero-progress-wrap");
+  var progLabel = document.getElementById("rank-hero-progress-label");
+
+  // Pick the best available MMR
+  var mmr = null;
+  if (activeSession)       mmr = getCurrentMmr();
+  else if (sessions.length > 0) mmr = sessions[sessions.length - 1].endMmr;
+
+  if (mmr === null) {
+    nameEl.textContent         = "—";
+    mmrEl.textContent          = "Start a session to track your rank";
+    iconEl.style.display       = "none";
+    progWrap.style.display     = "none";
+    hero.setAttribute("data-tier", "");
+    hero.style.removeProperty("--rk-color");
+    hero.style.removeProperty("--rk-glow");
+    return;
+  }
+
+  var rankName = getRankFromMMR(mmr);
+  var tier     = getRankTier(rankName);
+  var tierData = RANK_TIER_DATA[tier] || { primary: "var(--accent)", glow: "var(--accent-glow)" };
+
+  // Apply rank colors as CSS custom properties on the section
+  hero.style.setProperty("--rk-color", tierData.primary);
+  hero.style.setProperty("--rk-glow",  tierData.glow);
+  hero.setAttribute("data-tier", (tier || "").toUpperCase());
+
+  nameEl.textContent = rankName;
+  mmrEl.textContent  = mmr + " MMR";
+
+  // Icon
+  if (RANK_ICONS[rankName]) {
+    iconEl.src           = RANK_ICONS[rankName];
+    iconEl.style.display = "block";
+  } else {
+    iconEl.style.display = "none";
+  }
+
+  // Progress bar — needs a rAF so the width transition fires on first render
+  var prog = getRankProgress(mmr);
+  if (prog && prog.nextName) {
+    progWrap.style.display = "flex";
+    requestAnimationFrame(function() {
+      fillEl.style.width = prog.pct + "%";
+    });
+    progLabel.textContent = prog.mmrToNext + " MMR to " + prog.nextName;
+  } else {
+    progWrap.style.display = "none";
+    progLabel.textContent  = "Max rank reached";
+  }
+}
+
+// Returns the index in RANK_THRESHOLDS for a given MMR (used to detect rank-ups).
+function getRankIndex(mmr) {
+  var idx = 0;
+  for (var i = 0; i < RANK_THRESHOLDS.length; i++) {
+    if (mmr >= RANK_THRESHOLDS[i].mmr) { idx = i; } else { break; }
+  }
+  return idx;
+}
+
+// Returns the rank name for a given MMR value.
+function getRankFromMMR(mmr) {
+  var rank = RANK_THRESHOLDS[0].name;
+  for (var i = 0; i < RANK_THRESHOLDS.length; i++) {
+    if (mmr >= RANK_THRESHOLDS[i].mmr) {
+      rank = RANK_THRESHOLDS[i].name;
+    } else {
+      break;
+    }
+  }
+  return rank;
+}
+
+// Builds the rank icon strip and highlights the active rank.
+// Runs once on init, then the active class is updated on MMR change.
+function buildRankStrip() {
+  var strip = document.getElementById("rank-strip");
+  if (!strip) return;
+  strip.textContent = "";
+
+  Object.entries(RANK_ICONS).forEach(function(entry) {
+    var rankName = entry[0];
+    var iconPath = entry[1];
+
+    var item = document.createElement("div");
+    item.className    = "rank-strip-item";
+    item.dataset.rank = rankName;
+
+    var img = document.createElement("img");
+    img.src = iconPath;
+    img.alt = rankName;
+
+    var label = document.createElement("span");
+    label.textContent = rankName;
+
+    item.appendChild(img);
+    item.appendChild(label);
+    strip.appendChild(item);
+  });
+}
+
+function highlightStripRank(rankName) {
+  document.querySelectorAll(".rank-strip-item").forEach(function(item) {
+    item.classList.toggle("active", item.dataset.rank === rankName);
+  });
+}
+
+// Updates a rank icon+name pair given element IDs and an MMR value.
+function updateRankDisplay(mmr) {
+  setRankElements("rank-icon", "rank-name", mmr);
+}
+
+function updateStartRankDisplay(mmr) {
+  setRankElements("start-rank-icon", "start-rank-name", mmr);
+}
+
+function setRankElements(iconId, nameId, mmr) {
+  var iconEl = document.getElementById(iconId);
+  var nameEl = document.getElementById(nameId);
+  if (!iconEl || !nameEl) return;
+
+  if (mmr === null || mmr === undefined || isNaN(mmr)) {
+    iconEl.style.display = "none";
+    nameEl.textContent   = "";
+    return;
+  }
+
+  var rankName = getRankFromMMR(mmr);
+  nameEl.textContent = rankName;
+
+  if (RANK_ICONS[rankName]) {
+    iconEl.src           = RANK_ICONS[rankName];
+    iconEl.alt           = rankName;
+    iconEl.style.display = "inline-block";
+  } else {
+    iconEl.style.display = "none";
+  }
+}
+
+
+// ============================================================
 // CONSTANTS
 // ============================================================
 
@@ -245,6 +489,7 @@ function updateSessionHeader() {
     mmrEl.textContent = "—";
     netEl.textContent = "—";
     netEl.classList.remove("net-positive", "net-negative");
+    updateRankDisplay(null);
     return;
   }
 
@@ -258,6 +503,9 @@ function updateSessionHeader() {
   netEl.classList.remove("net-positive", "net-negative");
   if (net > 0) netEl.classList.add("net-positive");
   if (net < 0) netEl.classList.add("net-negative");
+
+  updateRankDisplay(currentMmr);
+  updateRankHero();
 }
 
 // Called when the user clicks "Start Session".
@@ -288,11 +536,6 @@ function startSession() {
 // Saves the final MMR to the sessions list, then resets to the start screen.
 function endSession() {
   if (!activeSession) return;
-
-  const confirmed = window.confirm(
-    "End this session? Your final MMR will be saved to the long-term chart."
-  );
-  if (!confirmed) return;
 
   const sessionGames = games.filter(function(g) {
     return g.sessionId === activeSession.sessionId;
@@ -327,6 +570,7 @@ function endSession() {
 
   updateLongTermChart();
   updateSessionLog();
+  updateRankHero();
   showStartSessionUI();
 }
 
@@ -682,6 +926,94 @@ function openConcept(conceptId) {
 
 
 // ============================================================
+// PERFORMANCE OVERVIEW SECTION
+// Win-rate donut, last-10-games form strip, spotlight stats.
+// ============================================================
+
+function updatePerformanceSection() {
+  var total = games.length;
+
+  // ---- Win-rate donut ----
+  var arc    = document.getElementById("winrate-arc");
+  var pctEl  = document.getElementById("winrate-pct");
+  var CIRC   = 238.76; // 2 * pi * 38
+
+  if (total === 0) {
+    arc.setAttribute("stroke-dasharray", "0 " + CIRC);
+    pctEl.textContent = "—";
+  } else {
+    var wins    = games.filter(function(g) { return g.result === "W"; }).length;
+    var winRate = Math.round((wins / total) * 100);
+    var filled  = (winRate / 100) * CIRC;
+    arc.setAttribute("stroke-dasharray", filled.toFixed(2) + " " + CIRC);
+    pctEl.textContent = winRate + "%";
+    // Colour the arc based on win rate
+    var color = winRate >= 55 ? "#16a34a" : winRate >= 45 ? "#2563eb" : "#dc2626";
+    arc.setAttribute("stroke", color);
+  }
+
+  // ---- Last 10 games form strip ----
+  var dotsEl    = document.getElementById("form-dots");
+  var summaryEl = document.getElementById("form-summary");
+  dotsEl.textContent = "";
+
+  var last10 = games.slice(-10);
+
+  // Pad with empty placeholders if fewer than 10 games
+  var placeholders = 10 - last10.length;
+  for (var i = 0; i < placeholders; i++) {
+    var empty = document.createElement("div");
+    empty.className   = "form-dot form-dot-empty";
+    empty.textContent = "·";
+    dotsEl.appendChild(empty);
+  }
+
+  last10.forEach(function(g) {
+    var dot = document.createElement("div");
+    dot.className   = g.result === "W" ? "form-dot form-dot-win" : "form-dot form-dot-loss";
+    dot.textContent = g.result;
+    dotsEl.appendChild(dot);
+  });
+
+  if (last10.length > 0) {
+    var recentWins = last10.filter(function(g) { return g.result === "W"; }).length;
+    summaryEl.textContent = recentWins + "W – " + (last10.length - recentWins) + "L in last " + last10.length;
+  } else {
+    summaryEl.textContent = "No games yet";
+  }
+
+  // ---- Spotlight stats ----
+  var peakEl    = document.getElementById("stat-peak-mmr");
+  var bestEl    = document.getElementById("stat-best-session");
+  var streakEl  = document.getElementById("stat-record-streak");
+
+  // Peak MMR: highest endMmr across all completed sessions
+  if (sessions.length > 0) {
+    var peak = sessions.reduce(function(max, s) { return Math.max(max, s.endMmr); }, -Infinity);
+    peakEl.textContent = peak;
+  } else {
+    peakEl.textContent = "—";
+  }
+
+  // Best session: highest positive netChange
+  if (sessions.length > 0) {
+    var best = sessions.reduce(function(max, s) { return Math.max(max, s.netChange); }, -Infinity);
+    bestEl.textContent = best >= 0 ? "+" + best : best;
+  } else {
+    bestEl.textContent = "—";
+  }
+
+  // Record win streak: longest consecutive W streak in all-time games
+  var recordStreak = 0, runStreak = 0;
+  games.forEach(function(g) {
+    if (g.result === "W") { runStreak++; recordStreak = Math.max(recordStreak, runStreak); }
+    else { runStreak = 0; }
+  });
+  streakEl.textContent = recordStreak > 0 ? "W " + recordStreak : "—";
+}
+
+
+// ============================================================
 // SUMMARY BAR
 // ============================================================
 
@@ -943,9 +1275,6 @@ function updateGameLog() {
 }
 
 function handleDelete(gameId) {
-  const confirmed = window.confirm("Delete this game? This cannot be undone.");
-  if (!confirmed) return;
-
   games = games.filter(function(g) { return g.id !== gameId; });
 
   saveGames();
@@ -955,8 +1284,19 @@ function handleDelete(gameId) {
   updateInSessionChart();
   updateSessionHeader();
   updateStatsDashboard();
+  updatePerformanceSection();
   updateSessionLog();
   updateGameLog();
+}
+
+
+function handleDeleteSession(sessionId) {
+  sessions = sessions.filter(function(s) { return s.sessionId !== sessionId; });
+  saveSessions();
+  updateLongTermChart();
+  updateSessionLog();
+  updatePerformanceSection();
+  updateRankHero();
 }
 
 
@@ -969,21 +1309,61 @@ function handleDelete(gameId) {
 function updateStatsDashboard() {
   const total = games.length;
 
+  var statKeys = [
+    { id: "avg-goals",   key: "goals",   label: "Avg Goals"   },
+    { id: "avg-saves",   key: "saves",   label: "Avg Saves"   },
+    { id: "avg-assists", key: "assists", label: "Avg Assists" },
+    { id: "avg-shots",   key: "shots",   label: "Avg Shots"   }
+  ];
+
   if (total === 0) {
-    ["avg-goals", "avg-saves", "avg-assists", "avg-shots"].forEach(function(id) {
-      document.getElementById(id).textContent = "—";
+    statKeys.forEach(function(s) {
+      document.getElementById(s.id).textContent = "—";
+      var trendEl = document.getElementById(s.id + "-trend");
+      if (trendEl) trendEl.textContent = "";
     });
     return;
   }
 
-  function sumOf(key) {
-    return games.reduce(function(acc, g) { return acc + g[key]; }, 0);
+  function avg(arr, key) {
+    return arr.reduce(function(acc, g) { return acc + g[key]; }, 0) / arr.length;
   }
 
-  document.getElementById("avg-goals").textContent   = (sumOf("goals")   / total).toFixed(2);
-  document.getElementById("avg-saves").textContent   = (sumOf("saves")   / total).toFixed(2);
-  document.getElementById("avg-assists").textContent = (sumOf("assists") / total).toFixed(2);
-  document.getElementById("avg-shots").textContent   = (sumOf("shots")   / total).toFixed(2);
+  // Compare all-time avg to last-5 avg and show a trend arrow
+  var last5 = games.slice(-5);
+
+  statKeys.forEach(function(s) {
+    var allAvg  = avg(games, s.key);
+    document.getElementById(s.id).textContent = allAvg.toFixed(2);
+
+    // Build or find the trend element inside the same stat-card
+    var valueEl = document.getElementById(s.id);
+    var card    = valueEl.closest(".stat-card");
+    if (!card) return;
+
+    var trendEl = card.querySelector(".stat-trend");
+    if (!trendEl) {
+      trendEl = document.createElement("div");
+      trendEl.className = "stat-trend";
+      card.appendChild(trendEl);
+    }
+
+    if (last5.length < 2) { trendEl.textContent = ""; return; }
+
+    var recentAvg = avg(last5, s.key);
+    var delta     = recentAvg - allAvg;
+
+    if (Math.abs(delta) < 0.05) {
+      trendEl.className   = "stat-trend trend-flat";
+      trendEl.textContent = "→ same as average";
+    } else if (delta > 0) {
+      trendEl.className   = "stat-trend trend-up";
+      trendEl.innerHTML   = "↑ +" + delta.toFixed(2) + " recent";
+    } else {
+      trendEl.className   = "stat-trend trend-down";
+      trendEl.innerHTML   = "↓ " + delta.toFixed(2) + " recent";
+    }
+  });
 }
 
 
@@ -1041,8 +1421,14 @@ function updateSessionLog() {
     badge.className   = "session-badge session-badge-" + outcomeClass;
     badge.textContent = outcomeLabel;
 
+    const deleteSessionBtn = document.createElement("button");
+    deleteSessionBtn.textContent = "Delete";
+    deleteSessionBtn.className   = "delete-btn";
+    deleteSessionBtn.addEventListener("click", function() { handleDeleteSession(record.sessionId); });
+
     header.appendChild(title);
     header.appendChild(badge);
+    header.appendChild(deleteSessionBtn);
 
     // Stats row
     const statsRow = document.createElement("div");
@@ -1127,6 +1513,9 @@ function handleFormSubmit(e) {
     return;
   }
 
+  // Snapshot rank BEFORE adding the game so we can detect a rank-up
+  const preRankIdx = getRankIndex(getCurrentMmr());
+
   // Infer win/loss from the sign of the MMR change
   // Positive MMR change = Win, Negative = Loss
   const result = mmrChange > 0 ? "W" : "L";
@@ -1156,11 +1545,20 @@ function handleFormSubmit(e) {
   updateSessionHeader();
   updateInSessionChart();
   updateStatsDashboard();
+  updatePerformanceSection();
   updateSessionLog();
   updateGameLog();
 
   flashSuccess();
   resetForm();
+
+  // Check for rank-up and fire the explosion if so
+  var postRankIdx = getRankIndex(getCurrentMmr());
+  if (postRankIdx > preRankIdx) {
+    setTimeout(function() {
+      triggerRankUpAnimation(RANK_THRESHOLDS[postRankIdx].name);
+    }, 350);
+  }
 
   runCoachingCheck();
 }
@@ -1196,8 +1594,29 @@ function init() {
   sessions      = loadSessions();
   activeSession = loadActiveSession();
 
+  // Apply saved theme (before charts build so colors are correct from the start)
+  var savedTheme = localStorage.getItem("rl_theme") || "ghost";
+  currentTheme = savedTheme;
+  document.documentElement.setAttribute("data-theme", savedTheme);
+
+  // Wire theme switcher buttons
+  document.querySelectorAll(".theme-btn").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.theme === savedTheme);
+    btn.addEventListener("click", function() { setTheme(btn.dataset.theme); });
+  });
+
   // Wire up buttons
   document.getElementById("start-session-btn").addEventListener("click", startSession);
+
+  // Build the rank icon strip
+  buildRankStrip();
+
+  // Live rank display + strip highlight on the start-session MMR input
+  document.getElementById("start-mmr-input").addEventListener("input", function() {
+    var val = parseInt(this.value);
+    updateStartRankDisplay(isNaN(val) ? null : val);
+    if (!isNaN(val)) highlightStripRank(getRankFromMMR(val));
+  });
   document.getElementById("end-session-btn").addEventListener("click", endSession);
   document.getElementById("tilt-dismiss-btn").addEventListener("click", function() {
     tiltDismissed = true;
@@ -1212,19 +1631,20 @@ function init() {
   // Show the correct UI based on whether a session is already in progress
   if (activeSession) {
     showActiveSessionUI();
-    // Pre-fill the start MMR input in case the user ends and restarts
     document.getElementById("start-mmr-input").value = activeSession.startMmr;
   } else {
     showStartSessionUI();
-    // Pre-fill start MMR with last session's ending MMR if available
     if (sessions.length > 0) {
-      document.getElementById("start-mmr-input").value = sessions[sessions.length - 1].endMmr;
+      var lastMmr = sessions[sessions.length - 1].endMmr;
+      document.getElementById("start-mmr-input").value = lastMmr;
+      updateStartRankDisplay(lastMmr);
     }
   }
 
-  // Build both charts
+  // Build both charts, then apply theme colors
   buildInSessionChart();
   buildLongTermChart();
+  updateChartColors(savedTheme);
 
   // Build the concept library (static, built once)
   updateConceptLibrary();
@@ -1237,8 +1657,651 @@ function init() {
   updateInSessionChart();
   updateLongTermChart();
   updateStatsDashboard();
+  updatePerformanceSection();
+  updateRankHero();
   updateSessionLog();
   updateGameLog();
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+
+// ============================================================
+// THEME MANAGEMENT
+// ============================================================
+
+var THEME_PALETTE = {
+  ghost:      { hex: "#2563eb", rgb: "37,99,235",   grid: "rgba(0,0,0,0.04)"   },
+  midnight:   { hex: "#60a5fa", rgb: "96,165,250",  grid: "rgba(255,255,255,0.05)" },
+  supersonic: { hex: "#f97316", rgb: "249,115,22",  grid: "rgba(255,255,255,0.05)" },
+  synthwave:  { hex: "#e040fb", rgb: "224,64,251",  grid: "rgba(255,255,255,0.04)" },
+  carbon:     { hex: "#a3e635", rgb: "163,230,53",  grid: "rgba(255,255,255,0.03)" }
+};
+
+var currentTheme = "ghost";
+
+function setTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("rl_theme", theme);
+
+  // Update active swatch
+  document.querySelectorAll(".theme-btn").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.theme === theme);
+  });
+
+  // Update chart colors to match new theme
+  updateChartColors(theme);
+}
+
+function updateChartColors(theme) {
+  var p = THEME_PALETTE[theme] || THEME_PALETTE.ghost;
+
+  [inSessionChart, longTermChart].forEach(function(chart) {
+    if (!chart || !chart.data.datasets[0]) return;
+
+    var hex = p.hex;
+    var r   = parseInt(hex.slice(1,3), 16);
+    var g   = parseInt(hex.slice(3,5), 16);
+    var b   = parseInt(hex.slice(5,7), 16);
+
+    chart.data.datasets[0].borderColor         = hex;
+    chart.data.datasets[0].pointBackgroundColor = hex;
+    chart.data.datasets[0].pointBorderColor     = theme === "ghost" ? "#ffffff" : "rgba(0,0,0,0.3)";
+
+    chart.data.datasets[0].backgroundColor = function(context) {
+      var c    = context.chart;
+      var area = c.chartArea;
+      if (!area) return "rgba(" + r + "," + g + "," + b + ",0)";
+      var grad = c.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+      grad.addColorStop(0, "rgba(" + r + "," + g + "," + b + ",0.18)");
+      grad.addColorStop(1, "rgba(" + r + "," + g + "," + b + ",0)");
+      return grad;
+    };
+
+    // Update grid colors
+    chart.options.scales.x.grid = { color: p.grid, drawBorder: false };
+    chart.options.scales.y.grid = { color: p.grid, drawBorder: false };
+
+    var tickColor = theme === "ghost" ? "#9aa4be" : "rgba(255,255,255,0.3)";
+    chart.options.scales.x.ticks = { color: tickColor, font: { size: 11 } };
+    chart.options.scales.y.ticks = { color: tickColor, font: { size: 11 } };
+
+    chart.update();
+  });
+}
+
+// ============================================================
+// CHART GLOW PLUGIN
+// Registered globally so all charts get a glowing line.
+// Sets a canvas shadow before each dataset draws.
+// ============================================================
+Chart.register({
+  id: "lineGlow",
+  beforeDatasetDraw: function(chart) {
+    var p = THEME_PALETTE[currentTheme] || THEME_PALETTE.ghost;
+    chart.ctx.save();
+    chart.ctx.shadowColor = "rgba(" + p.rgb + ", 0.55)";
+    chart.ctx.shadowBlur  = 14;
+  },
+  afterDatasetDraw: function(chart) {
+    chart.ctx.restore();
+  }
+});
+
+
+// ============================================================
+// DESIGN SYSTEM INIT
+// Called once after the page loads to wire up all visual
+// effects: cursor, parallax, magnetic buttons, card tilt,
+// scroll animations, and chart gradient fills.
+// ============================================================
+
+function initDesign() {
+
+  // --- Parallax blobs + header ---
+  var blobTargetX = 0, blobTargetY = 0;
+  var blobCurrentX = 0, blobCurrentY = 0;
+  var blob1 = document.getElementById("blob-1");
+  var blob2 = document.getElementById("blob-2");
+  var blob3 = document.getElementById("blob-3");
+  var appHeader = document.getElementById("app-header");
+
+  document.addEventListener("mousemove", function(e) {
+    blobTargetX = (e.clientX / window.innerWidth)  - 0.5;
+    blobTargetY = (e.clientY / window.innerHeight) - 0.5;
+  });
+
+  function tick() {
+    blobCurrentX += (blobTargetX - blobCurrentX) * 0.04;
+    blobCurrentY += (blobTargetY - blobCurrentY) * 0.04;
+    if (blob1) blob1.style.transform = "translate(" + (blobCurrentX * -48) + "px, " + (blobCurrentY * -32) + "px)";
+    if (blob2) blob2.style.transform = "translate(" + (blobCurrentX *  36) + "px, " + (blobCurrentY *  24) + "px)";
+    if (blob3) blob3.style.transform = "translate(" + (blobCurrentX *  20) + "px, " + (blobCurrentY * -18) + "px)";
+    if (appHeader) appHeader.style.transform = "translate(" + (blobCurrentX * 8) + "px, " + (blobCurrentY * 4) + "px)";
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+
+  // --- Magnetic buttons ---
+  // The button shifts slightly toward the cursor on mousemove.
+  function setupMagnetic(btn) {
+    btn.addEventListener("mousemove", function(e) {
+      var rect = btn.getBoundingClientRect();
+      var dx = (e.clientX - (rect.left + rect.width  / 2)) * 0.22;
+      var dy = (e.clientY - (rect.top  + rect.height / 2)) * 0.22;
+      btn.style.transform = "translate(" + dx + "px, " + dy + "px)";
+    });
+    btn.addEventListener("mouseleave", function() {
+      btn.style.transform = "";
+    });
+  }
+
+  document.querySelectorAll(
+    "#submit-btn, #start-session-btn, #end-session-btn, " +
+    "#tilt-dismiss-btn, #coaching-dismiss-btn"
+  ).forEach(setupMagnetic);
+
+  // Also wire future delete buttons (delegated on table body)
+  var tableBody = document.getElementById("game-table-body");
+  if (tableBody) {
+    tableBody.addEventListener("mouseover", function(e) {
+      if (e.target.classList.contains("delete-btn") && !e.target._magnetic) {
+        e.target._magnetic = true;
+        setupMagnetic(e.target);
+      }
+    });
+  }
+
+
+  // --- 3D card tilt on hover ---
+  // Cards rotate on the X/Y axis toward the cursor, creating depth.
+  function setupTilt(card) {
+    card.addEventListener("mousemove", function(e) {
+      var rect = card.getBoundingClientRect();
+      var x = (e.clientX - rect.left) / rect.width  - 0.5;
+      var y = (e.clientY - rect.top)  / rect.height - 0.5;
+      var rotX = -y * 7;
+      var rotY =  x * 7;
+      card.style.transform  = "perspective(700px) rotateX(" + rotX + "deg) rotateY(" + rotY + "deg) translateZ(4px)";
+      card.style.transition = "box-shadow 0.3s ease";
+    });
+    card.addEventListener("mouseleave", function() {
+      card.style.transform  = "";
+      card.style.transition = "transform 0.55s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease";
+    });
+  }
+
+  document.querySelectorAll(".stat-card, .concept-card, .session-card").forEach(setupTilt);
+
+  // Concept cards and session cards get rebuilt by JS — re-apply tilt after each update.
+  // We monkey-patch the render functions to run setupTilt after they finish.
+  var _origConceptLib = updateConceptLibrary;
+  updateConceptLibrary = function() {
+    _origConceptLib();
+    document.querySelectorAll(".concept-card").forEach(setupTilt);
+  };
+
+  var _origSessionLog = updateSessionLog;
+  updateSessionLog = function() {
+    _origSessionLog();
+    document.querySelectorAll(".session-card").forEach(setupTilt);
+    document.querySelectorAll(".session-card button").forEach(setupMagnetic);
+  };
+
+  var _origGameLog = updateGameLog;
+  updateGameLog = function() {
+    _origGameLog();
+    document.querySelectorAll(".delete-btn").forEach(function(btn) {
+      if (!btn._magnetic) { btn._magnetic = true; setupMagnetic(btn); }
+    });
+  };
+
+
+  // --- Scroll-driven entrance animations ---
+  // Adds .animate-on-scroll to lower sections, then IntersectionObserver
+  // adds .visible as each enters the viewport.
+  var scrollSections = document.querySelectorAll(
+    "#stats-section, #in-session-chart-section, #long-term-chart-section, " +
+    "#session-log-section, #game-log-section, #concept-library-section"
+  );
+
+  scrollSections.forEach(function(el, i) {
+    el.classList.add("animate-on-scroll");
+    // Stagger each section slightly
+    el.style.transitionDelay = (i * 60) + "ms";
+  });
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("visible");
+        observer.unobserve(entry.target); // animate once
+      }
+    });
+  }, { threshold: 0.08 });
+
+  scrollSections.forEach(function(el) { observer.observe(el); });
+
+
+  // --- Chart gradient fills ---
+  // Patches both chart dataset configs after charts are already built
+  // to add a gradient fill under the line.
+  function applyGradientFill(chart) {
+    if (!chart || !chart.data || !chart.data.datasets[0]) return;
+    chart.data.datasets[0].fill = true;
+    chart.data.datasets[0].backgroundColor = function(context) {
+      var c = context.chart;
+      var area = c.chartArea;
+      if (!area) return "rgba(37,99,235,0)";
+      var grad = c.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+      grad.addColorStop(0, "rgba(37,99,235,0.14)");
+      grad.addColorStop(1, "rgba(37,99,235,0)");
+      return grad;
+    };
+    chart.data.datasets[0].borderColor        = "#2563eb";
+    chart.data.datasets[0].borderWidth        = 2.5;
+    chart.data.datasets[0].pointBackgroundColor = "#2563eb";
+    chart.data.datasets[0].pointBorderColor    = "#ffffff";
+    chart.data.datasets[0].pointBorderWidth    = 2;
+    chart.data.datasets[0].pointRadius        = 4;
+    chart.data.datasets[0].pointHoverRadius   = 6;
+    chart.data.datasets[0].tension            = 0.35;
+
+    // Cleaner grid styling
+    chart.options.scales.x.grid  = { color: "rgba(0,0,0,0.04)", drawBorder: false };
+    chart.options.scales.y.grid  = { color: "rgba(0,0,0,0.04)", drawBorder: false };
+    chart.options.scales.x.ticks = { color: "#9aa4be", font: { size: 11 } };
+    chart.options.scales.y.ticks = { color: "#9aa4be", font: { size: 11 } };
+    chart.options.scales.x.title = { display: false };
+    chart.options.scales.y.title = { display: false };
+    chart.options.scales.x.border = { display: false };
+    chart.options.scales.y.border = { display: false };
+
+    chart.update();
+  }
+
+  // Charts are built inside init(), which runs before initDesign().
+  // inSessionChart and longTermChart are in outer scope — access directly.
+  applyGradientFill(inSessionChart);
+  applyGradientFill(longTermChart);
+}
+
+document.addEventListener("DOMContentLoaded", initDesign);
+
+
+// ============================================================
+// RANK-UP PARTICLE EXPLOSION — PREMIUM
+//
+// Techniques used:
+//  • Dark backdrop so additive ("lighter") glow actually blooms
+//  • globalCompositeOperation "lighter" — overlapping glow particles
+//    add their colors together, creating authentic bloom
+//  • Screen shake with decay oscillation
+//  • Instant colored screen flash
+//  • Staggered letter entrance on "RANK UP" text
+//  • Two-burst pattern: primary at t=0, secondary ring at t=380ms
+//  • Four shockwave rings at different speeds
+//  • Dead time: overlay stays visible 2.4 seconds so the player
+//    can register the achievement before it fades
+// ============================================================
+
+// Color palettes per rank tier — used for particle colors.
+var RANK_COLORS = {
+  "Bronze":          ["#cd7f32","#b87333","#e8965a","#daa068","#f0c080"],
+  "Silver":          ["#c0c0c0","#a8a8a8","#d8d8d8","#e8e8e8","#909090"],
+  "Gold":            ["#ffd700","#ffa500","#ffe066","#c8a200","#ffcc00"],
+  "Platinum":        ["#a5f2f3","#70d5dd","#38b2c8","#00bcd4","#b0e8f0"],
+  "Diamond":         ["#1a6fff","#4488ff","#60a0ff","#0044cc","#80b8ff"],
+  "Champion":        ["#8b5cf6","#6d28d9","#a78bfa","#7c3aed","#c4b5fd"],
+  "Grand Champion":  ["#ef4444","#dc2626","#ff6b6b","#b91c1c","#fca5a5"],
+  "Supersonic Legend":["#ec4899","#db2777","#f472b6","#fbbf24","#fde68a"]
+};
+
+function getRankColors(rankName) {
+  var keys = Object.keys(RANK_COLORS);
+  for (var i = keys.length - 1; i >= 0; i--) {
+    if (rankName.indexOf(keys[i]) !== -1) return RANK_COLORS[keys[i]];
+  }
+  return ["#2563eb","#60a5fa","#93c5fd","#1d4ed8","#3b82f6"];
+}
+
+// Oscillating screen shake with decay — feels physical rather than random.
+function shakeScreen() {
+  var el    = document.getElementById("app");
+  var start = Date.now();
+  var dur   = 520;
+  var amp   = 8;
+
+  (function tick() {
+    var t = (Date.now() - start) / dur;
+    if (t >= 1) { el.style.transform = ""; return; }
+    var decay = Math.pow(1 - t, 1.8);
+    var x = (Math.random() * 2 - 1) * amp * decay;
+    var y = (Math.random() * 2 - 1) * amp * 0.45 * decay;
+    el.style.transform = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px)";
+    requestAnimationFrame(tick);
+  })();
+}
+
+// Animate each character of an element's text independently.
+function staggerLetters(el, baseDelay, letterDelay) {
+  var text  = el.textContent;
+  el.textContent = "";
+  text.split("").forEach(function(ch, i) {
+    var span = document.createElement("span");
+    span.textContent = ch === " " ? " " : ch;
+    span.style.cssText =
+      "display:inline-block;opacity:0;transform:translateY(18px) scale(0.75);" +
+      "transition:opacity 0.38s ease,transform 0.45s cubic-bezier(0.34,1.56,0.64,1);" +
+      "transition-delay:" + (baseDelay + i * letterDelay) + "ms";
+    el.appendChild(span);
+    // Double rAF ensures transition triggers after the element is in the DOM
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        span.style.opacity   = "1";
+        span.style.transform = "translateY(0) scale(1)";
+      });
+    });
+  });
+}
+
+// Factory: create one particle object.
+function makeParticle(cx, cy, colors, speedMin, speedMax, shapes) {
+  var angle = Math.random() * Math.PI * 2;
+  var speed = speedMin + Math.random() * (speedMax - speedMin);
+  var shape = shapes[Math.floor(Math.random() * shapes.length)];
+  var roll  = Math.random();
+  var color = roll < 0.12 ? "#ffffff"
+            : roll < 0.18 ? colors[Math.min(colors.length - 1, 4)] || colors[0]
+            : colors[Math.floor(Math.random() * colors.length)];
+  return {
+    x: cx + (Math.random() - 0.5) * 24,
+    y: cy + (Math.random() - 0.5) * 24,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed - Math.random() * 4,
+    w:  5 + Math.random() * 13,
+    h:  7 + Math.random() * 17,
+    r:  3 + Math.random() * 7,
+    color: color,
+    alpha: 1,
+    decay: 0.0038 + Math.random() * 0.0055,
+    gravity: 0.24 + Math.random() * 0.1,
+    drag:    0.981,
+    rot:  Math.random() * Math.PI * 2,
+    rotV: (Math.random() - 0.5) * 0.28,
+    shape: shape,
+    glow: false
+  };
+}
+
+function triggerRankUpAnimation(rankName) {
+  var bgEl    = document.getElementById("rankup-bg");
+  var canvas  = document.getElementById("rankup-canvas");
+  var overlay = document.getElementById("rankup-overlay");
+  var iconEl  = document.getElementById("rankup-icon-large");
+  var labelEl = document.getElementById("rankup-label");
+  var nameEl  = document.getElementById("rankup-rank-name");
+  var colors  = getRankColors(rankName);
+
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  var ctx = canvas.getContext("2d");
+  var cx  = canvas.width  / 2;
+  var cy  = canvas.height / 2;
+  var maxR = Math.hypot(cx, cy) * 1.35;
+
+  // ---- 1. Dark backdrop fades in (makes "lighter" glow bloom) ----
+  bgEl.style.display = "block";
+  requestAnimationFrame(function() { bgEl.style.opacity = "0.78"; });
+
+  // ---- 2. Instant colored screen flash ----
+  var flash = document.createElement("div");
+  flash.style.cssText =
+    "position:fixed;inset:0;z-index:99989;pointer-events:none;" +
+    "background:" + colors[0] + ";opacity:0.5;transition:opacity 0.14s ease";
+  document.body.appendChild(flash);
+  requestAnimationFrame(function() {
+    flash.style.opacity = "0";
+    setTimeout(function() { flash.remove(); }, 220);
+  });
+
+  // ---- 3. Screen shake ----
+  shakeScreen();
+
+  // ---- 4. Canvas on ----
+  canvas.style.display = "block";
+
+  // ---- 5. Build particle arrays ----
+  var regular = [];  // drawn with source-over (confetti, shapes)
+  var glows   = [];  // drawn with "lighter" (bloom)
+
+  var CONF_SHAPES = ["rect","rect","rect","circle","star"];
+  var GLOW_SHAPES = ["circle"];
+
+  // Primary burst — 200 confetti + 50 glow blobs
+  for (var i = 0; i < 200; i++) {
+    regular.push(makeParticle(cx, cy, colors, 5, 22, CONF_SHAPES));
+  }
+  for (var i = 0; i < 60; i++) {
+    var gp  = makeParticle(cx, cy, colors, 3, 14, GLOW_SHAPES);
+    gp.r    = 6 + Math.random() * 18;
+    gp.alpha = 0.7 + Math.random() * 0.3;
+    gp.decay = 0.005 + Math.random() * 0.005;
+    gp.glow  = true;
+    glows.push(gp);
+  }
+
+  // Sparks — tiny fast dots, additive blend
+  for (var i = 0; i < 90; i++) {
+    var sp   = makeParticle(cx, cy, colors, 10, 32, GLOW_SHAPES);
+    sp.r     = 1.5 + Math.random() * 3;
+    sp.decay = 0.009 + Math.random() * 0.011;
+    sp.color = Math.random() < 0.5 ? "#ffffff" : colors[0];
+    sp.glow  = true;
+    glows.push(sp);
+  }
+
+  // Top-rain confetti falls from the top edge
+  for (var i = 0; i < 70; i++) {
+    regular.push({
+      x: Math.random() * canvas.width,
+      y: -8 - Math.random() * 90,
+      vx: (Math.random() - 0.5) * 4,
+      vy: 2.5 + Math.random() * 5,
+      w:  4 + Math.random() * 11,
+      h:  6 + Math.random() * 15,
+      r:  3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 1,
+      decay: 0.003 + Math.random() * 0.004,
+      gravity: 0.15,
+      drag: 0.992,
+      rot:  Math.random() * Math.PI * 2,
+      rotV: (Math.random() - 0.5) * 0.22,
+      shape: "rect",
+      glow: false
+    });
+  }
+
+  // Secondary burst at t=380ms — softer outer ring feel
+  setTimeout(function() {
+    for (var i = 0; i < 80; i++) {
+      var p2 = makeParticle(cx, cy, colors, 4, 14, CONF_SHAPES);
+      p2.decay = 0.005 + Math.random() * 0.007;
+      regular.push(p2);
+    }
+    for (var i = 0; i < 30; i++) {
+      var g2 = makeParticle(cx, cy, colors, 2, 9, GLOW_SHAPES);
+      g2.r = 8 + Math.random() * 16;
+      g2.glow = true;
+      glows.push(g2);
+    }
+  }, 380);
+
+  // ---- 6. Shockwave rings ----
+  var waves = [
+    { r: 0, speed: 20, alpha: 0.9, color: colors[0],              width: 4 },
+    { r: 0, speed: 13, alpha: 0.65, color: colors[1] || colors[0], width: 3 },
+    { r: 0, speed: 7,  alpha: 0.45, color: "#ffffff",              width: 2 },
+    { r: 0, speed: 16, alpha: 0.55, color: colors[2] || colors[0], width: 2.5, delay: 500 }
+  ];
+  var waveStart = Date.now();
+
+  // ---- 7. Draw helpers ----
+  function drawStar(x, y, r) {
+    ctx.beginPath();
+    for (var k = 0; k < 10; k++) {
+      var a  = (k * Math.PI) / 5 - Math.PI / 2;
+      var rr = k % 2 === 0 ? r : r * 0.42;
+      if (k === 0) ctx.moveTo(rr * Math.cos(a), rr * Math.sin(a));
+      else         ctx.lineTo(rr * Math.cos(a), rr * Math.sin(a));
+    }
+    ctx.closePath();
+  }
+
+  function drawRegular(p) {
+    if (p.alpha <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.alpha);
+    ctx.fillStyle   = p.color;
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    if (p.shape === "rect") {
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    } else if (p.shape === "circle") {
+      ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+    } else {
+      drawStar(0, 0, p.r * 1.4); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---- 8. Main animation loop ----
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var elapsed = Date.now() - waveStart;
+
+    // --- Shockwaves (source-over) ---
+    var waveAlive = false;
+    for (var w = 0; w < waves.length; w++) {
+      var wave = waves[w];
+      if (wave.delay && elapsed < wave.delay) continue;
+      wave.r    += wave.speed;
+      wave.alpha = Math.max(0, wave.alpha * 0.91);
+      if (wave.alpha > 0.01 && wave.r < maxR) {
+        waveAlive = true;
+        ctx.save();
+        ctx.globalAlpha = wave.alpha;
+        ctx.strokeStyle = wave.color;
+        ctx.lineWidth   = wave.width;
+        ctx.shadowColor = wave.color;
+        ctx.shadowBlur  = 18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, wave.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // --- Regular confetti / shapes (source-over) ---
+    var alive = false;
+    ctx.globalCompositeOperation = "source-over";
+    for (var i = 0; i < regular.length; i++) {
+      var p = regular[i];
+      if (p.alpha <= 0) continue;
+      p.x  += p.vx; p.y  += p.vy;
+      p.vy += p.gravity; p.vx *= p.drag;
+      p.rot += p.rotV; p.alpha -= p.decay;
+      if (p.alpha > 0) { alive = true; drawRegular(p); }
+    }
+
+    // --- Glow / spark layer ("lighter" = additive bloom) ---
+    // With the dark backdrop behind the canvas, additive blending
+    // creates genuine bright bloom where particles cluster.
+    ctx.globalCompositeOperation = "lighter";
+    for (var i = 0; i < glows.length; i++) {
+      var g = glows[i];
+      if (g.alpha <= 0) continue;
+      g.x  += g.vx; g.y  += g.vy;
+      g.vy += g.gravity; g.vx *= g.drag;
+      g.rot += g.rotV; g.alpha -= g.decay;
+      if (g.alpha <= 0) continue;
+      alive = true;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, g.alpha);
+      ctx.fillStyle   = g.color;
+      ctx.beginPath();
+      ctx.arc(g.x, g.y, g.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    if (alive || waveAlive) {
+      requestAnimationFrame(frame);
+    } else {
+      canvas.style.display = "none";
+    }
+  }
+
+  requestAnimationFrame(frame);
+
+  // ---- 9. Overlay entrance — staggered letters + icon ----
+  overlay.style.display   = "flex";
+  overlay.style.opacity   = "1";
+  overlay.style.transition = "";
+
+  // Letters stagger in starting at t=340ms
+  setTimeout(function() {
+    labelEl.textContent = "RANK UP";
+    staggerLetters(labelEl, 0, 60);
+    nameEl.style.opacity   = "0";
+    nameEl.style.transform = "translateY(10px)";
+    nameEl.textContent     = rankName;
+    nameEl.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+    nameEl.style.transitionDelay = "420ms";
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        nameEl.style.opacity   = "1";
+        nameEl.style.transform = "translateY(0)";
+      });
+    });
+  }, 340);
+
+  // Icon springs in at t=520ms
+  if (RANK_ICONS[rankName]) {
+    iconEl.src           = RANK_ICONS[rankName];
+    iconEl.style.display = "block";
+    iconEl.style.opacity = "0";
+    iconEl.style.transform = "scale(0.2) rotate(-12deg)";
+    iconEl.style.transition = "none";
+    setTimeout(function() {
+      iconEl.style.transition = "opacity 0.5s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1)";
+      iconEl.style.opacity    = "1";
+      iconEl.style.transform  = "scale(1) rotate(0deg)";
+    }, 520);
+  } else {
+    iconEl.style.display = "none";
+  }
+
+  // ---- 10. Dead time: 3.2s before fade — player needs to register the achievement ----
+  setTimeout(function() {
+    overlay.style.transition = "opacity 0.65s ease";
+    overlay.style.opacity    = "0";
+    bgEl.style.transition    = "opacity 0.65s ease";
+    bgEl.style.opacity       = "0";
+    setTimeout(function() {
+      overlay.style.display  = "none";
+      overlay.style.opacity  = "";
+      overlay.style.transition = "";
+      bgEl.style.display     = "none";
+      bgEl.style.opacity     = "";
+      bgEl.style.transition  = "";
+      iconEl.style.cssText   = "";
+      labelEl.textContent    = "";
+      nameEl.style.cssText   = "";
+    }, 700);
+  }, 3200);
+}

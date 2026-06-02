@@ -1,513 +1,1166 @@
 /* =============================================
-   RESET
-   Browsers have their own default styles that
-   vary between Chrome, Firefox, Safari, etc.
-   This block zeroes them out so we start clean.
+   DESIGN SYSTEM — CSS custom properties
 ============================================= */
-* {
-  box-sizing: border-box; /* padding doesn't add to an element's width */
+:root {
+  --bg:            #f3f6ff;
+  --surface:       rgba(255, 255, 255, 0.80);
+  --surface-solid: #ffffff;
+  --border:        rgba(0, 40, 160, 0.07);
+  --border-strong: rgba(0, 40, 160, 0.13);
+
+  --accent:        #2563eb;
+  --accent-dim:    rgba(37, 99, 235, 0.10);
+  --accent-glow:   rgba(37, 99, 235, 0.22);
+  --accent-hover:  #1d4ed8;
+
+  --text:          #0c1a3a;
+  --text-2:        #4b5a78;
+  --text-3:        #9aa4be;
+
+  --win:           #16a34a;
+  --win-bg:        rgba(22, 163, 74, 0.08);
+  --loss:          #dc2626;
+  --loss-bg:       rgba(220, 38, 38, 0.08);
+  --warn:          #d97706;
+  --warn-bg:       rgba(217, 119, 6, 0.08);
+
+  --radius-lg:     20px;
+  --radius:        14px;
+  --radius-sm:     8px;
+
+  /* Spring easing — overshoots slightly then settles */
+  --spring:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:      cubic-bezier(0.22, 1, 0.36, 1);
+
+  --shadow-sm:     0 1px 3px rgba(0, 20, 80, 0.06);
+  --shadow:        0 4px 20px rgba(0, 20, 80, 0.07), 0 1px 4px rgba(0, 20, 80, 0.04);
+  --shadow-lg:     0 16px 56px rgba(0, 20, 80, 0.10), 0 4px 16px rgba(0, 20, 80, 0.06);
+  --shadow-glow:   0 0 0 1px rgba(37, 99, 235, 0.20), 0 8px 32px rgba(37, 99, 235, 0.20);
+}
+
+/* =============================================
+   THEMES
+   Override CSS custom properties per theme.
+   Applied via data-theme attribute on <html>.
+============================================= */
+
+/* ---- Midnight ---- dark navy, electric blue glow */
+:root[data-theme="midnight"] {
+  --bg:            #070b14;
+  --surface:       rgba(12,18,40,0.88);
+  --surface-solid: #0c1228;
+  --border:        rgba(80,120,255,0.08);
+  --border-strong: rgba(80,120,255,0.16);
+  --accent:        #60a5fa;
+  --accent-dim:    rgba(96,165,250,0.14);
+  --accent-glow:   rgba(96,165,250,0.30);
+  --accent-hover:  #93c5fd;
+  --text:          #dce8ff;
+  --text-2:        #7888aa;
+  --text-3:        #3a4868;
+  --win:           #4ade80;
+  --win-bg:        rgba(74,222,128,0.12);
+  --loss:          #f87171;
+  --loss-bg:       rgba(248,113,113,0.12);
+  --shadow-sm:     0 1px 4px rgba(0,8,40,0.5);
+  --shadow:        0 4px 24px rgba(0,8,40,0.55), 0 1px 4px rgba(0,8,40,0.4);
+  --shadow-lg:     0 16px 64px rgba(0,8,40,0.65), 0 4px 16px rgba(0,8,40,0.4);
+  --shadow-glow:   0 0 0 1px rgba(96,165,250,0.25), 0 8px 32px rgba(96,165,250,0.28);
+}
+
+/* ---- Supersonic ---- dark navy, RL orange, angular */
+:root[data-theme="supersonic"] {
+  --bg:            #070c1a;
+  --surface:       rgba(10,16,40,0.88);
+  --surface-solid: #0a1028;
+  --border:        rgba(0,140,255,0.10);
+  --border-strong: rgba(0,140,255,0.20);
+  --accent:        #f97316;
+  --accent-dim:    rgba(249,115,22,0.14);
+  --accent-glow:   rgba(249,115,22,0.32);
+  --accent-hover:  #fb923c;
+  --text:          #eef4ff;
+  --text-2:        #5a7a9f;
+  --text-3:        #2c4060;
+  --win:           #4ade80;
+  --win-bg:        rgba(74,222,128,0.12);
+  --loss:          #f87171;
+  --loss-bg:       rgba(248,113,113,0.12);
+  --radius-lg:     10px;
+  --radius:        6px;
+  --radius-sm:     3px;
+  --shadow-sm:     0 1px 4px rgba(0,6,30,0.5);
+  --shadow:        0 4px 24px rgba(0,6,30,0.55), 0 1px 4px rgba(0,6,30,0.4);
+  --shadow-lg:     0 16px 60px rgba(0,6,30,0.65), 0 4px 16px rgba(0,6,30,0.4);
+  --shadow-glow:   0 0 0 1px rgba(249,115,22,0.30), 0 8px 32px rgba(249,115,22,0.32);
+}
+
+/* ---- Synthwave ---- dark purple, magenta + cyan, sharp corners */
+:root[data-theme="synthwave"] {
+  --bg:            #0d0520;
+  --surface:       rgba(28,10,60,0.85);
+  --surface-solid: #1a083e;
+  --border:        rgba(224,64,251,0.14);
+  --border-strong: rgba(224,64,251,0.26);
+  --accent:        #e040fb;
+  --accent-dim:    rgba(224,64,251,0.14);
+  --accent-glow:   rgba(224,64,251,0.38);
+  --accent-hover:  #ea80fc;
+  --text:          #f5e6ff;
+  --text-2:        #b06ece;
+  --text-3:        #6a3888;
+  --win:           #00e5ff;
+  --win-bg:        rgba(0,229,255,0.12);
+  --loss:          #ff4081;
+  --loss-bg:       rgba(255,64,129,0.13);
+  --radius-lg:     2px;
+  --radius:        2px;
+  --radius-sm:     1px;
+  --shadow-sm:     0 1px 4px rgba(50,0,80,0.5);
+  --shadow:        0 4px 24px rgba(50,0,80,0.55), 0 1px 4px rgba(50,0,80,0.4);
+  --shadow-lg:     0 16px 60px rgba(50,0,80,0.65), 0 4px 16px rgba(50,0,80,0.4);
+  --shadow-glow:   0 0 0 1px rgba(224,64,251,0.32), 0 8px 32px rgba(224,64,251,0.38);
+}
+
+/* ---- Carbon ---- pure black, lime terminal, zero radius, mono numbers */
+:root[data-theme="carbon"] {
+  --bg:            #080808;
+  --surface:       rgba(14,14,14,0.96);
+  --surface-solid: #0e0e0e;
+  --border:        rgba(255,255,255,0.05);
+  --border-strong: rgba(255,255,255,0.10);
+  --accent:        #a3e635;
+  --accent-dim:    rgba(163,230,53,0.12);
+  --accent-glow:   rgba(163,230,53,0.32);
+  --accent-hover:  #bef264;
+  --text:          #f0f0f0;
+  --text-2:        #787878;
+  --text-3:        #404040;
+  --win:           #a3e635;
+  --win-bg:        rgba(163,230,53,0.10);
+  --loss:          #f87171;
+  --loss-bg:       rgba(248,113,113,0.12);
+  --radius-lg:     0px;
+  --radius:        0px;
+  --radius-sm:     0px;
+  --shadow-sm:     0 1px 4px rgba(0,0,0,0.7);
+  --shadow:        0 4px 20px rgba(0,0,0,0.7), 0 1px 4px rgba(0,0,0,0.6);
+  --shadow-lg:     0 16px 48px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.6);
+  --shadow-glow:   0 0 0 1px rgba(163,230,53,0.25), 0 8px 32px rgba(163,230,53,0.32);
+}
+
+/* =============================================
+   THEME — background decoration overrides
+============================================= */
+
+/* Midnight: vivid blobs */
+:root[data-theme="midnight"] #blob-1 { background: radial-gradient(circle, rgba(96,165,250,0.24) 0%, transparent 70%); }
+:root[data-theme="midnight"] #blob-2 { background: radial-gradient(circle, rgba(147,51,234,0.18) 0%, transparent 70%); }
+:root[data-theme="midnight"] #blob-3 { background: radial-gradient(circle, rgba(14,165,233,0.16) 0%, transparent 70%); }
+
+/* Supersonic: orange + blue blobs */
+:root[data-theme="supersonic"] #blob-1 { background: radial-gradient(circle, rgba(249,115,22,0.22) 0%, transparent 70%); }
+:root[data-theme="supersonic"] #blob-2 { background: radial-gradient(circle, rgba(56,189,248,0.16) 0%, transparent 70%); }
+:root[data-theme="supersonic"] #blob-3 { background: radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%); }
+
+/* Synthwave: magenta + cyan blobs + scanline grid */
+:root[data-theme="synthwave"] #blob-1 { background: radial-gradient(circle, rgba(224,64,251,0.28) 0%, transparent 70%); }
+:root[data-theme="synthwave"] #blob-2 { background: radial-gradient(circle, rgba(0,229,255,0.18) 0%, transparent 70%); }
+:root[data-theme="synthwave"] #blob-3 { background: radial-gradient(circle, rgba(224,64,251,0.14) 0%, transparent 70%); }
+:root[data-theme="synthwave"] body {
+  background-image:
+    linear-gradient(rgba(224,64,251,0.04) 1px, transparent 1px);
+  background-size: 100% 24px;
+}
+
+/* Carbon: no blobs */
+:root[data-theme="carbon"] #blob-1,
+:root[data-theme="carbon"] #blob-2,
+:root[data-theme="carbon"] #blob-3 { display: none; }
+
+/* =============================================
+   THEME — grain blend mode
+   "multiply" works on light; "screen" on dark.
+============================================= */
+:root[data-theme="midnight"] #grain,
+:root[data-theme="supersonic"] #grain,
+:root[data-theme="synthwave"] #grain,
+:root[data-theme="carbon"] #grain {
+  mix-blend-mode: screen;
+  opacity: 0.045;
+}
+
+/* =============================================
+   THEME — header dot-grid accent color
+============================================= */
+:root[data-theme="midnight"] #app-header::before {
+  background-image: radial-gradient(circle, rgba(96,165,250,0.14) 1.2px, transparent 1.2px);
+}
+:root[data-theme="supersonic"] #app-header::before {
+  background-image: radial-gradient(circle, rgba(249,115,22,0.12) 1.2px, transparent 1.2px);
+}
+:root[data-theme="synthwave"] #app-header::before {
+  background-image:
+    linear-gradient(rgba(224,64,251,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+:root[data-theme="carbon"] #app-header::before { display: none; }
+
+/* =============================================
+   THEME — wordmark gradients
+============================================= */
+:root[data-theme="midnight"] #app-wordmark {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+:root[data-theme="supersonic"] #app-wordmark {
+  background: linear-gradient(135deg, #f97316 0%, #38bdf8 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+:root[data-theme="synthwave"] #app-wordmark {
+  background: linear-gradient(135deg, #e040fb 0%, #00e5ff 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+:root[data-theme="carbon"] #app-wordmark {
+  background: linear-gradient(135deg, #a3e635 0%, #f0f0f0 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* =============================================
+   THEME — synthwave section neon border
+============================================= */
+:root[data-theme="synthwave"] section {
+  border-left: 2px solid rgba(224,64,251,0.35);
+}
+:root[data-theme="synthwave"] #summary-bar {
+  border-left: 2px solid rgba(224,64,251,0.35);
+}
+
+/* =============================================
+   THEME — carbon monospace numbers
+============================================= */
+:root[data-theme="carbon"] .summary-value,
+:root[data-theme="carbon"] .session-info-value,
+:root[data-theme="carbon"] .stat-card-value,
+:root[data-theme="carbon"] .spotlight-value,
+:root[data-theme="carbon"] #app-title {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  letter-spacing: -0.01em;
+}
+
+/* =============================================
+   THEME SWITCHER
+============================================= */
+#theme-switcher {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.theme-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.3s var(--spring), box-shadow 0.2s ease;
+  flex-shrink: 0;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+.theme-btn:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.theme-btn.active {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2.5px rgba(255,255,255,0.9), 0 2px 10px rgba(0,0,0,0.28);
+}
+
+/* Radial gradient: bright highlight top-left, deep accent bottom-right — subtle sphere depth */
+.theme-btn[data-theme="ghost"]      { background: radial-gradient(circle at 35% 32%, #bfdbfe, #1d4ed8); }
+.theme-btn[data-theme="midnight"]   { background: radial-gradient(circle at 35% 32%, #1e3a6e, #0d0f1f); }
+.theme-btn[data-theme="supersonic"] { background: radial-gradient(circle at 35% 32%, #fb923c, #7c2d00); }
+.theme-btn[data-theme="synthwave"]  { background: radial-gradient(circle at 35% 32%, #f0abfc, #6b21a8); }
+.theme-btn[data-theme="carbon"]     { background: radial-gradient(circle at 35% 32%, #d9f99d, #1a2e05); }
+
+/* =============================================
+   RESET
+============================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 /* =============================================
-   BASE / PAGE
+   BODY
 ============================================= */
 body {
-  font-family: system-ui, -apple-system, sans-serif; /* uses the OS's default font */
-  background: #f0f0f0;
-  color: #222;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
   padding: 24px;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Centers everything and caps the width so it doesn't stretch too wide */
+
+/* =============================================
+   BACKGROUND BLOBS
+   Large soft radial gradients positioned behind
+   everything. The glassmorphism cards blur over
+   them, creating genuine depth.
+============================================= */
+#blob-1, #blob-2, #blob-3 {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(70px);
+  will-change: transform;
+}
+
+#blob-1 {
+  width: 56vw;
+  height: 56vw;
+  top: -14vw;
+  right: -8vw;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.14) 0%, transparent 70%);
+}
+
+#blob-2 {
+  width: 44vw;
+  height: 44vw;
+  bottom: -10vw;
+  left: -8vw;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.10) 0%, transparent 70%);
+}
+
+#blob-3 {
+  width: 28vw;
+  height: 28vw;
+  top: 42vh;
+  left: 38vw;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.08) 0%, transparent 70%);
+}
+
+/* =============================================
+   FILM GRAIN OVERLAY
+   A subtle noise texture rendered via inline SVG.
+   Stops flat gradients from looking too digital.
+============================================= */
+#grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.038;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  mix-blend-mode: multiply;
+}
+
+#cursor-ring, #cursor-dot { display: none; }
+
+/* =============================================
+   APP CONTAINER
+============================================= */
 #app {
-  max-width: 960px;
+  max-width: 980px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
-h2 {
-  font-size: 1.1rem;
+/* =============================================
+   APP HEADER
+============================================= */
+#app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 0 30px;
+  will-change: transform;
+}
+
+#app-wordmark {
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fadeUp 0.6s var(--ease-out) 0ms both;
+}
+
+#header-text {
+  animation: fadeUp 0.6s var(--ease-out) 80ms both;
+}
+
+#app-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+}
+
+#app-subtitle {
+  font-size: 0.72rem;
   font-weight: 700;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e0e0e0;
-  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  margin-top: 5px;
 }
 
-/* All the main panels (form, chart, game log) share this card style */
-section {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 24px;
+/* =============================================
+   SECTION HEADINGS
+============================================= */
+h2 {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
   margin-bottom: 20px;
+}
+
+/* =============================================
+   SECTION CARDS — glassmorphism base
+============================================= */
+section {
+  background: var(--surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.35s ease;
+}
+
+section:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Sections that scroll-animate — JS adds animate-on-scroll, then visible */
+section.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out), box-shadow 0.35s ease;
+}
+
+section.animate-on-scroll.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Top-of-page sections toggled by JS — always visible */
+#start-session-card,
+#log-section {
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 /* =============================================
    SUMMARY BAR
-   The three stats at the top of the page.
 ============================================= */
 #summary-bar {
-  display: flex;     /* lays the three stats side by side */
-  gap: 40px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 16px 24px;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
 }
 
 .summary-stat {
+  padding: 24px 26px;
   display: flex;
-  flex-direction: column; /* label on top, number below */
-  gap: 2px;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid var(--border);
+  transition: background 0.2s ease;
+  animation: fadeUp 0.55s var(--ease-out) both;
 }
 
+.summary-stat:last-child { border-right: none; }
+
+.summary-stat:nth-child(1) { animation-delay: 80ms; }
+.summary-stat:nth-child(2) { animation-delay: 150ms; }
+.summary-stat:nth-child(3) { animation-delay: 220ms; }
+.summary-stat:nth-child(4) { animation-delay: 290ms; }
+
+.summary-stat:hover { background: rgba(37, 99, 235, 0.025); }
+
 .summary-label {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.60rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #888;
+  letter-spacing: 0.13em;
+  color: var(--text-3);
 }
 
 .summary-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #222;
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--text);
   line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.streak-win  { color: var(--win); }
+.streak-loss { color: var(--loss); }
+
+/* =============================================
+   RANK STRIP
+   Horizontal row of all available rank icons.
+============================================= */
+#rank-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.rank-strip-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: transform 0.35s var(--spring);
+}
+
+.rank-strip-item:hover {
+  transform: translateY(-4px) scale(1.08);
+}
+
+.rank-strip-item img {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+}
+
+/* Highlight the strip item that matches current MMR */
+.rank-strip-item.active img {
+  filter: drop-shadow(0 0 8px rgba(37,99,235,0.5)) drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+  transform: translateY(-4px) scale(1.12);
+}
+
+.rank-strip-item span {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rank-strip-item.active span {
+  color: var(--accent);
 }
 
 /* =============================================
-   LOG FORM
+   RANK HERO
 ============================================= */
-
-/* Each label + input + hint lives in a .field-row */
-.field-row {
+#rank-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 48px;
+  padding: 40px 44px;
+  /* rank-colored radial glow bleeds from icon position */
+  transition: --rk-color 0.6s ease;
 }
 
-/* Fixed-width labels so all the inputs line up vertically */
-.field-row label {
-  width: 72px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-align: right;
-  color: #444;
-  flex-shrink: 0; /* don't let the label squeeze smaller */
+/* Rank-colored ambient glow behind the icon */
+#rank-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 50%, var(--rk-glow, transparent) 0%, transparent 58%);
+  pointer-events: none;
+  transition: background 0.6s ease;
 }
 
-/* Shared style for the rank dropdown and number inputs */
-.field-row select,
-.field-row input[type="number"] {
+/* Large background watermark — tier name set via data-tier attribute */
+#rank-hero::after {
+  content: attr(data-tier);
+  position: absolute;
+  right: -10px;
+  bottom: -24px;
+  font-size: clamp(5rem, 10vw, 8.5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--rk-color, transparent);
+  opacity: 0.07;
+  pointer-events: none;
+  user-select: none;
+  transition: color 0.6s ease;
+}
+
+/* ---- Icon + glow rings ---- */
+#rank-hero-icon-wrap {
+  position: relative;
   width: 160px;
-  padding: 7px 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 0.95rem;
-  background: #fff;
-  color: #222;
-}
-
-/* Blue outline when an input is focused (gives keyboard users a clear target) */
-.field-row select:focus,
-.field-row input[type="number"]:focus,
-#result-selector:focus {
-  outline: 2px solid #4a90e2;
-  outline-offset: 2px;
-}
-
-/* ---- W/L Result Selector ----
-   This is a <div> styled to look like an input field.
-   JavaScript handles the W and L keypresses. */
-#result-selector {
+  height: 160px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 160px;
-  height: 36px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+}
+
+/* Outer soft glow blob */
+#rank-hero-ring-1 {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--rk-glow, transparent) 0%, transparent 70%);
+  animation: rankGlow1 3.2s ease-in-out infinite;
+  transition: background 0.6s ease;
+}
+
+/* Inner crisp border ring */
+#rank-hero-ring-2 {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--rk-color, transparent);
+  opacity: 0.28;
+  animation: rankGlow2 3.2s ease-in-out infinite 1.6s;
+  transition: border-color 0.6s ease;
+}
+
+#rank-hero-icon {
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 24px var(--rk-glow, rgba(0,0,0,0.15)));
+  transition: filter 0.6s ease;
+  display: none;
+}
+
+@keyframes rankGlow1 {
+  0%, 100% { opacity: 0.55; transform: scale(0.97); }
+  50%       { opacity: 1;    transform: scale(1.05); }
+}
+@keyframes rankGlow2 {
+  0%, 100% { opacity: 0.20; transform: scale(0.95); }
+  50%       { opacity: 0.45; transform: scale(1.08); }
+}
+
+/* ---- Text content ---- */
+#rank-hero-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#rank-hero-eyebrow {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-3);
+}
+
+#rank-hero-name {
+  font-size: clamp(2.2rem, 3.8vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--rk-color, var(--text));
+  text-shadow: 0 0 48px var(--rk-glow, transparent);
+  transition: color 0.5s ease, text-shadow 0.5s ease;
+}
+
+#rank-hero-mmr-display {
   font-size: 1rem;
   font-weight: 700;
-  cursor: default;
-  background: #fafafa;
-  user-select: none; /* prevents text from being highlighted when clicking */
-  color: #aaa;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
 }
 
-/* Green style when Win is selected */
-#result-selector.win {
-  background: #eaf6ec;
-  border-color: #4caf50;
-  color: #2e7d32;
+/* ---- Progress bar ---- */
+#rank-hero-progress-wrap {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
 }
 
-/* Red style when Loss is selected */
-#result-selector.loss {
-  background: #fdecea;
-  border-color: #e53935;
-  color: #b71c1c;
+#rank-hero-bar-track {
+  height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 300px;
 }
 
-/* ---- MVP Checkbox ---- */
+#rank-hero-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--rk-color, var(--accent));
+  box-shadow: 0 0 10px var(--rk-glow, transparent);
+  width: 0%;
+  transition: width 1s var(--ease-out), background 0.6s ease, box-shadow 0.6s ease;
+}
+
+#rank-hero-progress-label {
+  font-size: 0.70rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+/* ---- Floating ambient particles ---- */
+.rank-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--rk-color, transparent);
+  pointer-events: none;
+  transition: background 0.6s ease;
+}
+
+.rp-1 { width: 8px;  height: 8px;  top: 18%; left: 10%;   opacity: 0.14; animation: rpf1 7s  ease-in-out infinite; }
+.rp-2 { width: 5px;  height: 5px;  top: 72%; left: 7%;    opacity: 0.10; animation: rpf2 9s  ease-in-out infinite 1.2s; }
+.rp-3 { width: 7px;  height: 7px;  top: 25%; right: 24%;  opacity: 0.11; animation: rpf3 8s  ease-in-out infinite 2.5s; }
+.rp-4 { width: 4px;  height: 4px;  top: 78%; right: 20%;  opacity: 0.09; animation: rpf1 10s ease-in-out infinite 3.8s; }
+
+@keyframes rpf1 {
+  0%, 100% { transform: translate(0,0);        opacity: 0.12; }
+  33%       { transform: translate(10px,-14px); opacity: 0.22; }
+  66%       { transform: translate(-8px, 8px);  opacity: 0.07; }
+}
+@keyframes rpf2 {
+  0%, 100% { transform: translate(0,0);        opacity: 0.10; }
+  50%       { transform: translate(14px,-10px); opacity: 0.22; }
+}
+@keyframes rpf3 {
+  0%, 100% { transform: translate(0,0);        opacity: 0.09; }
+  40%       { transform: translate(-12px,10px); opacity: 0.20; }
+  80%       { transform: translate(8px,-6px);   opacity: 0.05; }
+}
+
+/* =============================================
+   APP HEADER — dot-grid texture
+============================================= */
+#app-header {
+  position: relative;
+}
+
+#app-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(37,99,235,0.10) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.5) 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.5) 70%, transparent 100%);
+}
+
+/* =============================================
+   PERFORMANCE OVERVIEW SECTION
+============================================= */
+#performance-section {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: 32px;
+  padding: 24px 28px;
+}
+
+/* --- Win-rate donut --- */
+#perf-winrate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#winrate-ring {
+  width: 130px;
+  height: 130px;
+  overflow: visible;
+}
+
+#winrate-arc {
+  transition: stroke-dasharray 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* --- Form strip --- */
+#perf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.perf-label {
+  font-size: 0.60rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+
+#form-dots {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.form-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  transition: transform 0.3s var(--spring);
+}
+
+.form-dot:hover { transform: scale(1.15); }
+
+.form-dot-win {
+  background: var(--win-bg);
+  color: var(--win);
+  border: 1.5px solid rgba(22,163,74,0.2);
+}
+
+.form-dot-loss {
+  background: var(--loss-bg);
+  color: var(--loss);
+  border: 1.5px solid rgba(220,38,38,0.2);
+}
+
+.form-dot-empty {
+  background: var(--border);
+  color: var(--text-3);
+  border: 1.5px solid transparent;
+  font-size: 1rem;
+}
+
+#form-summary {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+/* --- Spotlight stats --- */
+#perf-spotlight {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 28px;
+  border-left: 1px solid var(--border);
+  min-width: 160px;
+}
+
+.spotlight-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.spotlight-label {
+  font-size: 0.60rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+
+.spotlight-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* =============================================
+   STAT CARDS — trend indicator
+============================================= */
+.stat-trend {
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.trend-up   { color: var(--win); }
+.trend-down { color: var(--loss); }
+.trend-flat { color: var(--text-3); }
+
+/* =============================================
+   FORM FIELDS
+============================================= */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.field-row label {
+  width: 80px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+
+.field-row input[type="number"],
+.field-row input[type="text"],
+.field-row select {
+  width: 160px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background: var(--surface-solid);
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field-row input[type="number"]:focus,
+.field-row input[type="text"]:focus,
+.field-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim), 0 0 14px var(--accent-glow);
+}
+
 .field-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #4a90e2; /* colors the checkmark blue in modern browsers */
+  accent-color: var(--accent);
 }
 
-/* ---- Keyboard hint text ----
-   The small grey text to the right of each field. */
 .hint {
-  font-size: 0.72rem;
-  color: #aaa;
-  font-family: monospace;
-}
-
-/* ---- Submit button ----
-   Left margin lines it up with the input fields. */
-#submit-btn {
-  display: block;
-  margin-top: 6px;
-  margin-left: 84px; /* label width (72px) + gap (12px) = 84px */
-  padding: 8px 28px;
-  background: #4a90e2;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-#submit-btn:hover {
-  background: #3178c6;
-}
-
-#submit-btn:active {
-  background: #2563a8;
-}
-
-/* ---- Green flash on successful submit ----
-   JavaScript adds the .success class for a moment, then removes it.
-   The transition on #log-section makes it fade smoothly. */
-#log-section {
-  transition: background-color 0.4s ease;
-}
-
-#log-section.success {
-  background-color: #eaf6ec;
+  font-size: 0.67rem;
+  color: var(--text-3);
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 /* =============================================
-   CHART
+   SESSION INFO BAR
 ============================================= */
-
-/* Controls the height of the chart area.
-   Chart.js fills this container. */
-#chart-container {
-  position: relative;
-  height: 280px;
+#session-info-bar {
+  display: flex;
+  gap: 36px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
 }
 
-/* =============================================
-   GAME LOG TABLE
-============================================= */
-#no-games-msg {
-  color: #aaa;
-  font-style: italic;
-  text-align: center;
-  padding: 16px 0;
-}
+.session-info-item { display: flex; flex-direction: column; gap: 4px; }
 
-#game-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.88rem;
-}
-
-#game-table th {
-  text-align: center;
-  padding: 8px 10px;
-  font-size: 0.7rem;
+.session-info-label {
+  font-size: 0.60rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #888;
-  background: #f9f9f9;
-  border-bottom: 2px solid #eee;
+  letter-spacing: 0.13em;
+  color: var(--text-3);
 }
 
-#game-table td {
-  text-align: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #333;
+.session-info-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Subtle row highlight on hover */
-#game-table tbody tr:hover {
-  background: #f7f7f7;
+.net-positive { color: var(--win); }
+.net-negative { color: var(--loss); }
+
+/* =============================================
+   RANK DISPLAY
+   Shows rank icon + name in the session info bar.
+============================================= */
+/* Shared rank display style — used in both start-session card and session info bar */
+#rank-display,
+#start-rank-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* Win = green text, Loss = red text */
-.result-win {
-  color: #2e7d32;
+#rank-icon,
+#start-rank-icon {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+  display: none; /* shown by JS when an icon is available */
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));
+  transition: transform 0.35s var(--spring);
+}
+
+#rank-icon:hover,
+#start-rank-icon:hover {
+  transform: scale(1.12);
+}
+
+#rank-name,
+#start-rank-name {
+  font-size: 0.95rem;
   font-weight: 700;
-}
-
-.result-loss {
-  color: #b71c1c;
-  font-weight: 700;
-}
-
-/* Delete button — looks subtle until hovered */
-.delete-btn {
-  padding: 3px 10px;
-  background: none;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  color: #aaa;
-  cursor: pointer;
-  font-size: 0.78rem;
-}
-
-.delete-btn:hover {
-  background: #fdecea;
-  border-color: #e53935;
-  color: #b71c1c;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 /* =============================================
-   STREAK (added to summary bar)
-   The summary-value element gets one of these
-   classes so the streak number is coloured.
+   BUTTONS
 ============================================= */
-.streak-win {
-  color: #2e7d32; /* green */
+button { font-family: inherit; cursor: pointer; }
+
+/* Primary — pill shape, accent blue, glow on hover */
+#submit-btn,
+#start-session-btn {
+  display: block;
+  margin-top: 8px;
+  margin-left: 94px; /* label 80px + gap 14px */
+  padding: 10px 30px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 40px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: transform 0.3s var(--spring), box-shadow 0.3s ease, background 0.2s ease;
+  will-change: transform;
 }
 
-.streak-loss {
-  color: #b71c1c; /* red */
+#submit-btn:hover, #start-session-btn:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-glow);
 }
+
+#submit-btn:active, #start-session-btn:active {
+  transform: scale(0.97) !important;
+}
+
+/* Ghost button */
+#end-session-btn {
+  padding: 10px 22px;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 40px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-2);
+  transition: transform 0.3s var(--spring), box-shadow 0.3s ease, border-color 0.2s, background 0.2s, color 0.2s;
+  will-change: transform;
+}
+
+#end-session-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+#form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  margin-left: 94px;
+}
+
+/* Success flash — green tint on section bg */
+#log-section { transition: background 0.4s ease; }
+#log-section.success { background: rgba(22, 163, 74, 0.06); }
 
 /* =============================================
    TILT WARNING
-   An amber card that appears between the log
-   form and the stats dashboard when you lose
-   3+ games in a row in the current session.
 ============================================= */
 #tilt-warning {
-  /* Hidden by default. JavaScript sets style.display = "flex" to show this.
-     Inline styles always override stylesheet rules, so that's all it takes.
-     The flex properties below (align-items etc.) take effect as soon as
-     the element becomes a flex container. */
   display: none;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #fff8e1;
-  border: 1px solid #f9a825;
-  border-left: 4px solid #f9a825; /* thick left border makes it stand out */
-  border-radius: 8px;
+  background: var(--warn-bg);
+  border: 1px solid rgba(217, 119, 6, 0.18);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius);
   padding: 14px 20px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
-/* Text and button inside the tilt warning */
 #tilt-warning-text {
-  font-size: 0.92rem;
-  color: #5d4037; /* dark brown — readable on the amber background */
+  font-size: 0.88rem;
+  color: var(--text-2);
   font-weight: 500;
 }
 
 #tilt-dismiss-btn {
   padding: 5px 14px;
   background: none;
-  border: 1px solid #f9a825;
-  border-radius: 4px;
-  color: #7b5800;
-  cursor: pointer;
-  font-size: 0.82rem;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+  border-radius: 20px;
+  color: var(--warn);
+  font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0; /* don't let the button squash when the text is long */
+  flex-shrink: 0;
+  transition: background 0.2s, transform 0.3s var(--spring);
+  will-change: transform;
 }
 
 #tilt-dismiss-btn:hover {
-  background: #fff3cd;
+  background: rgba(217, 119, 6, 0.1);
 }
 
 /* =============================================
-   STATS DASHBOARD
-============================================= */
-#stats-filter-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
-  color: #555;
-}
-
-#stats-rank-filter {
-  padding: 5px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background: #fff;
-  color: #222;
-}
-
-#stats-rank-filter:focus {
-  outline: 2px solid #4a90e2;
-  outline-offset: 2px;
-}
-
-/* Four stat cards laid out side by side */
-#stats-cards {
-  display: flex;
-  gap: 14px;
-}
-
-.stat-card {
-  flex: 1; /* all four cards share the available width equally */
-  background: #f9f9f9;
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.stat-card-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #888;
-}
-
-.stat-card-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #222;
-  line-height: 1;
-}
-
-/* =============================================
-   SESSION LOG
-============================================= */
-#no-sessions-msg {
-  color: #aaa;
-  font-style: italic;
-  text-align: center;
-  padding: 16px 0;
-}
-
-/* One card per session */
-.session-card {
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
-}
-
-.session-card:last-child {
-  margin-bottom: 0;
-}
-
-/* Header row: session title on the left, outcome badge on the right */
-.session-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.session-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: #333;
-}
-
-/* Small pill badge showing "Win Session", "Loss Session", or "Even" */
-.session-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 3px 9px;
-  border-radius: 3px;
-}
-
-.session-badge-win {
-  background: #eaf6ec;
-  color: #2e7d32;
-}
-
-.session-badge-loss {
-  background: #fdecea;
-  color: #b71c1c;
-}
-
-.session-badge-even {
-  background: #f0f0f0;
-  color: #666;
-}
-
-/* Row of stats below the header: Record, Games, Avg Goals, etc. */
-.session-stats-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap; /* wrap to a new line if the window is narrow */
-}
-
-.session-stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.session-stat-label {
-  font-size: 0.67rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #aaa;
-  font-weight: 600;
-}
-
-.session-stat-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #333;
-}
-
-/* =============================================
-   COACHING ALERT (Phase 3)
-   Blue card — visually distinct from the amber
-   tilt warning. Hidden by default; JavaScript
-   shows it when a pattern is detected.
+   COACHING ALERT
 ============================================= */
 #coaching-alert {
-  /* Hidden by default. JavaScript sets style.display = "block" to show it. */
   display: none;
-  background: #e8f0fe;
-  border: 1px solid #4a90e2;
-  border-left: 4px solid #4a90e2;
-  border-radius: 8px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 16px;
 }
 
-/* Header row: "AI Coaching Tip" label on left, Dismiss button on right */
 #coaching-alert-header {
   display: flex;
   align-items: center;
@@ -516,58 +1169,238 @@ section {
 }
 
 #coaching-alert-label {
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #4a90e2;
+  letter-spacing: 0.12em;
+  color: var(--accent);
 }
 
 #coaching-alert-body {
-  font-size: 0.92rem;
-  color: #1a3a6b;
-  line-height: 1.55;
+  font-size: 0.90rem;
+  color: var(--text-2);
+  line-height: 1.6;
   margin-bottom: 10px;
 }
 
-/* "Learn more ↓" link — hidden while the tip is loading, shown after */
 #coaching-concept-link {
   display: none;
-  font-size: 0.82rem;
+  font-size: 0.80rem;
   font-weight: 600;
-  color: #4a90e2;
+  color: var(--accent);
   text-decoration: none;
 }
 
-#coaching-concept-link:hover {
-  text-decoration: underline;
-}
+#coaching-concept-link:hover { text-decoration: underline; }
 
 #coaching-dismiss-btn {
   padding: 4px 12px;
   background: none;
-  border: 1px solid #4a90e2;
-  border-radius: 4px;
-  color: #4a90e2;
-  cursor: pointer;
-  font-size: 0.8rem;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 20px;
+  color: var(--accent);
+  font-size: 0.78rem;
   font-weight: 600;
+  transition: background 0.2s, transform 0.3s var(--spring);
+  will-change: transform;
 }
 
-#coaching-dismiss-btn:hover {
-  background: #d0e4ff;
+#coaching-dismiss-btn:hover { background: rgba(37, 99, 235, 0.08); }
+
+/* =============================================
+   STATS DASHBOARD
+============================================= */
+#stats-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow 0.3s ease;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+.stat-card:hover { box-shadow: var(--shadow-lg); }
+
+.stat-card-label {
+  font-size: 0.60rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--text-3);
+}
+
+.stat-card-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* =============================================
-   CONCEPT LIBRARY (Phase 3)
+   CHART CONTAINERS
 ============================================= */
-#concept-library-intro {
-  font-size: 0.88rem;
-  color: #666;
-  margin-bottom: 16px;
+#in-session-chart-container,
+#long-term-chart-container {
+  position: relative;
+  height: 280px;
 }
 
-/* 2-column grid of concept cards */
+#no-session-chart-msg,
+#no-long-term-chart-msg {
+  font-size: 0.88rem;
+  color: var(--text-3);
+  font-style: italic;
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* =============================================
+   SESSION LOG
+============================================= */
+#no-sessions-msg {
+  font-size: 0.88rem;
+  color: var(--text-3);
+  font-style: italic;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.session-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  background: var(--bg);
+  transition: box-shadow 0.3s ease;
+  will-change: transform;
+  transform-style: preserve-3d;
+}
+
+.session-card:last-child { margin-bottom: 0; }
+.session-card:hover { box-shadow: var(--shadow); }
+
+.session-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.session-title { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+
+.session-badge {
+  font-size: 0.60rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.session-badge-win  { background: var(--win-bg);  color: var(--win); }
+.session-badge-loss { background: var(--loss-bg); color: var(--loss); }
+.session-badge-even { background: var(--border);  color: var(--text-3); }
+
+.session-stats-row { display: flex; gap: 24px; flex-wrap: wrap; }
+.session-stat-item { display: flex; flex-direction: column; gap: 2px; }
+
+.session-stat-label {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.session-stat-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* =============================================
+   GAME LOG TABLE
+============================================= */
+#no-games-msg {
+  font-size: 0.88rem;
+  color: var(--text-3);
+  font-style: italic;
+  text-align: center;
+  padding: 24px 0;
+}
+
+#game-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+#game-table th {
+  text-align: center;
+  padding: 8px 10px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--text-3);
+  border-bottom: 1px solid var(--border);
+}
+
+#game-table td {
+  text-align: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+#game-table tbody tr { transition: background 0.15s ease; }
+#game-table tbody tr:hover { background: rgba(37, 99, 235, 0.03); }
+
+.result-win  { color: var(--win);  font-weight: 700; }
+.result-loss { color: var(--loss); font-weight: 700; }
+
+.delete-btn {
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.3s var(--spring);
+  will-change: transform;
+}
+
+.delete-btn:hover {
+  background: var(--loss-bg);
+  border-color: rgba(220, 38, 38, 0.25);
+  color: var(--loss);
+}
+
+/* =============================================
+   CONCEPT LIBRARY
+============================================= */
+#concept-library-intro {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
 #concept-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -575,181 +1408,142 @@ section {
 }
 
 .concept-card {
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
-  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
   cursor: pointer;
-  transition: border-color 0.2s;
+  background: var(--bg);
+  transition: border-color 0.25s ease, box-shadow 0.3s ease;
+  will-change: transform;
+  transform-style: preserve-3d;
 }
 
 .concept-card:hover {
-  border-color: #bbb;
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: var(--shadow);
 }
 
-/* Highlighted when a coaching alert links to this concept */
 .concept-card.highlighted {
-  border-color: #4a90e2;
-  background: #e8f0fe;
+  border-color: var(--accent);
+  background: var(--accent-dim);
 }
 
 .concept-card-title {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  color: #222;
+  color: var(--text);
   margin-bottom: 4px;
 }
 
 .concept-card-summary {
-  font-size: 0.82rem;
-  color: #666;
-  line-height: 1.45;
-  margin-bottom: 8px;
+  font-size: 0.80rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: 10px;
 }
 
-/* "Read more ▼" toggle button */
 .concept-toggle {
-  font-size: 0.78rem;
-  color: #4a90e2;
+  font-size: 0.75rem;
+  color: var(--accent);
   font-weight: 600;
   background: none;
   border: none;
   padding: 0;
-  cursor: pointer;
 }
 
-.concept-toggle:hover {
-  text-decoration: underline;
-}
+.concept-toggle:hover { text-decoration: underline; }
 
-/* Full concept text — hidden until the card is expanded */
 .concept-full-content {
   display: none;
   margin-top: 12px;
-  font-size: 0.88rem;
-  color: #333;
-  line-height: 1.65;
-  border-top: 1px solid #e0e0e0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.7;
+  border-top: 1px solid var(--border);
   padding-top: 12px;
-
-  /* Preserve line breaks in the concept text */
   white-space: pre-line;
 }
 
-/* When the card has the "expanded" class, show the full content */
-.concept-card.expanded .concept-full-content {
-  display: block;
-}
+.concept-card.expanded .concept-full-content { display: block; }
 
 /* =============================================
-   START SESSION CARD
-   Shown when no session is active. Replaces the
-   log form until the user enters their MMR and
-   clicks Start Session.
+   RANK-UP PARTICLE OVERLAY
 ============================================= */
-#start-session-card {
-  /* Uses the same card style as other sections */
+
+/* Dark backdrop — dims the page so additive glow compositing shows bloom */
+#rankup-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 99988;
+  background: #05051a;
+  display: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-#start-session-btn {
-  display: block;
-  margin-top: 6px;
-  margin-left: 84px;
-  padding: 8px 28px;
-  background: #4a90e2;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
+#rankup-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 99990;
+  pointer-events: none;
+  display: none;
 }
 
-#start-session-btn:hover { background: #3178c6; }
-#start-session-btn:active { background: #2563a8; }
-
-/* =============================================
-   SESSION INFO BAR
-   Shows Current MMR and Session Net change
-   at the top of the log form while a session
-   is active.
-============================================= */
-#session-info-bar {
-  display: flex;
-  gap: 32px;
-  padding: 12px 0 16px;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 18px;
-}
-
-.session-info-item {
-  display: flex;
+#rankup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99991;
+  display: none;
   flex-direction: column;
-  gap: 2px;
-}
-
-.session-info-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #888;
-}
-
-.session-info-value {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #222;
-  line-height: 1;
-}
-
-/* Session net change coloured green or red */
-.net-positive { color: #2e7d32; }
-.net-negative { color: #b71c1c; }
-
-/* =============================================
-   FORM ACTIONS ROW
-   Log Game and End Session buttons side by side.
-============================================= */
-#form-actions {
-  display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
-  margin-left: 84px;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
 }
 
-#end-session-btn {
-  padding: 8px 20px;
-  background: none;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #666;
-  cursor: pointer;
+#rankup-icon-large {
+  height: 120px;
+  width: auto;
+  filter: drop-shadow(0 0 40px rgba(255,255,255,0.9)) drop-shadow(0 4px 20px rgba(0,0,0,0.25));
+  display: none;
 }
 
-#end-session-btn:hover {
-  background: #f5f5f5;
-  border-color: #aaa;
-  color: #333;
+#rankup-label {
+  font-size: 3.8rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 0 80px rgba(255,255,255,0.9), 0 4px 28px rgba(0,0,0,0.35);
+}
+
+#rankup-rank-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@keyframes rankUpPop {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-8deg); }
+  65%  { opacity: 1; transform: scale(1.1) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes rankUpTextPop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* =============================================
-   TWO-CHART LAYOUT
-   In-session and long-term charts each get their
-   own section with the same container height.
+   KEYFRAME ANIMATIONS
 ============================================= */
-#in-session-chart-container,
-#long-term-chart-container {
-  position: relative;
-  height: 260px;
-}
-
-#no-session-chart-msg,
-#no-long-term-chart-msg {
-  color: #aaa;
-  font-style: italic;
-  text-align: center;
-  padding: 16px 0;
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
