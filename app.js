@@ -8,16 +8,6 @@
 // ============================================================
 
 
-// ============================================================
-// ★ API CONFIGURATION — PASTE YOUR KEY HERE ★
-//
-// 1. Go to https://console.anthropic.com
-// 2. Generate an API key (starts with sk-ant-api03-...)
-// 3. Replace "paste-your-key-here" with it
-//
-// Without a key, coaching alerts still work using built-in tips.
-// ============================================================
-const CLAUDE_API_KEY = ""; // Paste your key here (https://console.anthropic.com). Leave blank to use built-in tips.
 
 
 // ============================================================
@@ -647,20 +637,103 @@ const CONCEPT_VIDEOS = {
 };
 
 
-// Fallback coaching tips used when no API key is set or the API call fails.
+// Coaching tips — one array per pattern. A random entry is chosen each time
+// so the same alert doesn't repeat the same text on every firing.
 const FALLBACK_TIPS = {
-  mvp_no_wins:       "You're making strong individual plays but the team wins aren't following. This usually points to a rotation issue — when you win a 50/50, make sure to follow through to the next position rather than waiting to see what happens.",
-  saves_declining:   "Your defensive numbers have dipped recently. This often happens when you start playing more aggressively and leave yourself too far forward on turnovers. Try consciously checking your depth relative to your teammates.",
-  session_fatigue:   "Your results tend to drop off in longer sessions. Decision fatigue is real in Rocket League — your mechanics stay sharp but your reads get slower. A 10-minute break every hour often gets you better total results than grinding through.",
-  low_shot_accuracy: "You're getting shots off but they're not converting. At Gold, most missed shots happen because you take them off-balance or at a bad angle — you'd rather get a shot off quickly than wait for a cleaner look. Prioritize contact quality over shot quantity.",
-  ball_chasing:      "Your assist numbers suggest you're spending most of the game chasing the ball rather than rotating. Every time you go for the ball, ask whether it's actually your turn — if a teammate is closer or already committed, peel off and hold the next position.",
-  cold_start:        "You tend to drop the first game of a session before you get going. Spend 5 minutes in free play or a training pack before jumping into ranked — your first ranked game shouldn't also be your warmup.",
-  recent_slump:      "Your last few games are well below your usual level. Slumps at Gold almost always mean one habit has slipped — usually rotating out when you should stay, or challenging when you should shadow. Watch one of your recent losses back and look for that moment.",
-  goals_declining:   "You're scoring less than usual lately. This typically means you're taking shots from low-percentage positions — too far out, off-balance, or into the keeper. Wait for a closer, more controlled look even if it means passing on a shot.",
-  long_session_tilt: "You've had a rough run in this session and it's getting worse, not better. The best play right now is to stop — queue again tomorrow. Forcing more games in a tilt spiral almost never works out.",
-  losing_to_lower:   "You're dropping games to opponents ranked below you more often than expected. This pattern almost always comes from overconfidence — you go for riskier plays, skip fundamentals, and make mental errors you wouldn't make against stronger opponents. Treat every game with the same focus and discipline.",
-  punching_up:       "You're winning more than half your games against higher-ranked opponents — that's a strong sign your reads and positioning are ahead of your MMR. The main thing holding you back is likely mechanical consistency. Clean up your aerials and ground shots so your game sense can fully express itself."
+  mvp_no_wins: [
+    "You're clearly the most impactful player on your team individually, but wins come from the team working together. When you win a 50/50, instead of following the ball, immediately rotate behind your teammates — let them attack while you hold position. Your individual skill is there; now use it to enable your teammates instead of bypassing them.",
+    "High MVP rate with a low win rate almost always means you're carrying the ball rather than carrying the team. After every goal you score, get back in rotation immediately instead of chasing the next play. The goal is to set your teammate up for the next touch, not to score again yourself.",
+    "Being MVP means you're the best individual player in the lobby — but Rocket League is won by teams, not individuals. Focus on the 2-3 games in your recent run where a teammate had a clean look and you cut in front of them. That's the habit to break."
+  ],
+  saves_declining: [
+    "Your save numbers dropping usually means you're pushing too far forward and not getting back in time when it turns over. After every offensive touch, check where your teammates are before committing to a second challenge — if they're already forward, you need to be the one rotating back to net.",
+    "Fewer saves often means the ball is getting behind you before you can read it. Try holding a slightly deeper position when your team doesn't have clear possession — it gives you more time to react when a turnover happens.",
+    "A drop in saves can mean opponents are getting better looks at net because you're out of position on the transition. Pay attention to the moment possession switches: that's when you need to be retreating, not still committing to the offensive play."
+  ],
+  session_fatigue: [
+    "Your results are noticeably worse in the second half of your sessions — this is decision fatigue, not mechanical failure. Your mechanics stay sharp, but your reads get half a second slower and that compounds over games. A 10-minute break now is worth more than two more games.",
+    "You're not getting worse mechanically as sessions go on — you're making slightly worse decisions, and those decisions have a bigger impact than any mechanical mistake. Set a 90-minute limit for your sessions and see if your results stabilize.",
+    "The drop in your second half is consistent enough that it's a real pattern. Try capping sessions at 6-8 games, or building in a break after 4. Grinding through the dip almost never recovers it — fresh sessions outperform extended ones."
+  ],
+  low_shot_accuracy: [
+    "You're getting shots off regularly but not converting — most of these are probably rushed from too far out or at a bad angle. Before shooting, ask: is this a realistic chance, or am I just shooting because I have the ball? A touch to get a better angle before shooting wins more games than quick volume shots.",
+    "Shot accuracy under 25% at your rate of attempts means you're taking a lot of low-percentage looks. Try passing up shots where you're off-balance or at a narrow angle, even if they feel takeable. Waiting for a set, central look will immediately improve your conversion rate.",
+    "High shots, low conversion usually means you're taking shots the keeper or a defender can easily handle. The best shot isn't the fastest one — it's the one taken when you're set, close, and at an angle the goalie has to move for. Slow down the approach by one touch."
+  ],
+  ball_chasing: [
+    "Your assist numbers suggest you're spending most of your time chasing the ball rather than staying in your position. The next time a teammate has the ball, physically stop and hold your lane — let them go, and be ready to receive if they need to pass or to follow up if they miss. You don't need to be touching the ball to be helping.",
+    "Low assists usually means you're going for the ball every time it's near you, even when it's not your turn. Try this: after every touch you take, immediately look at where your nearest teammate is and move away from them. If they're going for it, you shouldn't be.",
+    "The best players at rotation aren't the ones who chase the most — they're the ones who know when to stop. When a teammate is better positioned than you, pull out completely. Your assist rate will climb when you're consistently available in space rather than competing for every touch."
+  ],
+  cold_start: [
+    "You're consistently losing your first game of sessions — this is a warmup problem, not a skill problem. Your mechanics and reads take 10-15 minutes to fully activate, and right now your first ranked game is also your warmup. Spend 5 minutes in free play before queueing and watch the cold start pattern break.",
+    "First-game losses in most of your recent sessions suggest your calibration is off at the start. Your brain is still getting into RL mode when the first game starts. Even 3-5 minutes of training packs before queueing gives your reads time to activate before the first real game.",
+    "The first game of a session is always the hardest — your positioning instincts aren't fully online yet, and opponents who've already been playing have a real edge. One training pack or 5 minutes of free play before ranked is the cheapest fix for your most consistent losing pattern."
+  ],
+  recent_slump: [
+    "You're in a slump relative to your historical level — which means you're capable of better, and something specific has slipped. Watch one of your recent losses back and look for the moment before the goal went in. It's almost always a decision (a challenge taken, a position held) rather than a mechanic that failed.",
+    "Slumps at your level usually have a single root cause that repeats across games. The fastest way to identify it is to replay 2-3 of your recent losses and look specifically for what's different compared to games you won. It's usually one recurring mistake, not many.",
+    "Your recent numbers are below your own baseline, which means this isn't a skill regression — it's a temporary pattern. The most common cause is a habit that's slipped (over-challenging, not rotating out, taking poor shots). Play your next 3 games focusing only on fundamentals and see if the numbers recover."
+  ],
+  goals_declining: [
+    "Scoring less than before usually means you're taking shots from lower-percentage positions. The shots that go in at your level come from being close, set, and at a good angle — not from being the first to reach the ball. Wait for a cleaner look even when it means passing up a rushed shot.",
+    "A drop in goals often means you're not making the run after your first touch. After every touch that doesn't score, immediately look for where the ball will be in 2 seconds and start moving there. Goals often come from arriving at the right spot rather than being the first to challenge.",
+    "Goal rate dropping while shots stay the same means the quality of your chances has dropped. Look at where you're shooting from: if most attempts are from outside or at a narrow angle, you're settling for the first opportunity instead of manufacturing a better one."
+  ],
+  long_session_tilt: [
+    "You're deep into a session and the last three went badly — the session is over. Not because you can't play, but because the odds of recovering from this specific state are genuinely low and queueing again is more likely to extend the run than end it. Close the game. Come back fresh.",
+    "Late-session loss streaks almost never reverse through persistence. The decisions that felt fine 6 games ago are now slightly off because your brain is tired, and tired decisions compound into more losses. The best play you can make right now is to stop.",
+    "Eight-plus games deep with a 3-loss finish is a clear signal, not bad luck. Take a break — even if you feel fine mechanically, your decision-making is compromised by fatigue in ways you can't feel from the inside. Come back in 24 hours."
+  ],
+  losing_to_lower: [
+    "Dropping games to lower-ranked opponents is almost always a confidence/focus problem, not a skill problem. You go in expecting to win, and that expectation makes you play looser — you take risks you wouldn't take against stronger opponents, and those risks get punished. Treat every lobby with the same focus and discipline regardless of rank.",
+    "Lower-ranked opponents beat you when you underestimate them. You start taking lower-percentage challenges, skipping rotations because it'll be fine, and the small errors add up. There's no such thing as an easy game — approach every match the same way.",
+    "When you lose to lower-ranked players, it's rarely because they outplayed you mechanically — it's because you played down to the level of the lobby. The fix is simple but hard: play your best game regardless of who's on the other side."
+  ],
+  punching_up: [
+    "Winning more than half your games against higher-ranked opponents is a clear sign your game sense is ahead of your mechanics. You're reading plays correctly and making good decisions — now clean up the execution. The mechanic most likely to hold you back next is shot accuracy from good positions.",
+    "Your results against stronger opponents suggest your rank will keep rising. The main thing that separates your current level from the next is mechanical consistency under pressure — not new skills, just executing the ones you have more reliably when games are tight.",
+    "Beating higher-ranked opponents consistently means your game sense is genuinely above your MMR. Focus now on the mechanical skills that convert your good reads into goals — your positioning is creating the chances, your execution just needs to catch up."
+  ],
+  solo_carry: [
+    "You're scoring a lot but not setting teammates up — this means you're often in the same space as the ball when a teammate could be there, cutting off their chance to touch it. After you score, get back in rotation immediately instead of pressing. More assists doesn't mean fewer goals; it means better results.",
+    "High goals and very low assists is the signature of someone playing like they're in a 1v1. In 2v2, the moments where you pull back and let your teammate attack often create better opportunities than taking every touch yourself. Try actively looking for your teammate before committing to a touch.",
+    "The gap between your goals and assists suggests you're not creating chances for your duo — you're creating chances for yourself and taking them. When you get the ball in a good position, look for your teammate's run before shooting. You'll find you score just as much, and win more."
+  ],
+  no_saves: [
+    "Very few saves over 10 games usually means one of two things: either your teammates are handling all the defense (great), or you're consistently too far forward when attacks come and can't get back in time. If you're losing games where opponents score unchallenged, you need to hold deeper.",
+    "Not making saves doesn't necessarily mean you're playing badly, but if you're losing games where opponents are scoring without pressure, nobody is home when attacks happen. Make sure at least one player is in a position to contest shots when possession turns over.",
+    "Low save numbers paired with losses suggests opponents are getting clean shots without challenge. Before every opponent attack, ask: if my teammate misses this clear, can I get to the resulting shot? If the answer is no, you're too far forward."
+  ],
+  accuracy_declining: [
+    "Your shot accuracy has dropped recently, which usually means you're taking the first opportunity instead of the best one. Slow down by one touch on plays where you have time — use it to reposition for a better angle before shooting. The extra half-second is worth more than the rushed look.",
+    "When shot accuracy falls, the fix is almost never to aim better — it's to shoot from better positions. Try passing up shots where you're off-balance or at a narrow angle, even if they feel takeable. Waiting for a set, central look will immediately improve your conversion rate.",
+    "Your recent shot accuracy is notably lower than before. Most of these misses are probably from too far out, too wide, or while moving in the wrong direction. One rule: if you'd have to aim perfectly for the shot to go in, don't take it. Only shoot when your position gives you margin for error."
+  ],
+  win_streak: [
+    "You're on a real win streak — your reads and rotation are clicking right now. The one thing to watch: streaks end when you start playing to protect them instead of playing to win. Keep doing exactly what got you here and don't adjust anything based on the streak number.",
+    "Strong win streak. Stay locked in — don't let the streak make you overconfident or cautious. Both reactions break streaks faster than anything an opponent can do. Just keep playing your game.",
+    "You're playing some of your best recent Rocket League. The streak is a result of good decisions, not luck — trust the process and keep rotating correctly. The only way to end it early is to start thinking about it too much."
+  ],
+  defensive_anchor: [
+    "You're making a lot of saves — which often means your teammates are leaving you more exposed than they should. If your saves are high and you're still losing, your team might be over-committing while you cover for them. Consider communicating your position so they know when they can push.",
+    "High save rate with losses means you're doing your job defensively but the offensive end isn't converting. This pattern sometimes means you're staying back too conservatively when your team has possession — try pushing slightly higher when your teammate has a clear scoring chance.",
+    "Making lots of saves while losing tells a specific story: opponents are getting enough high-quality looks to score despite your defense. Either your team is conceding too many attacks, or your offensive output isn't enough to offset them. Try being more aggressive on kickoffs and early possession."
+  ],
+  no_contribution: [
+    "Very few goals and assists combined over 10 games means you're often in the wrong place at the wrong time — not close enough to shoot when opportunities open up, not in position to support when teammates attack. Focus less on where the ball is and more on where it will be in 2 seconds.",
+    "Low overall contribution usually means you're spending too much time recovering from being out of position. Every time you're driving back to your own half, that's time you can't be contributing offensively. Work on your rotation so you're always recovered and available before the next play develops.",
+    "When goals and assists are both low, the cause is almost always positioning — specifically, not being in the right place when chances open up. After every touch, ask yourself: where will I be most useful in the next 3 seconds? Shadowing the play from a central, supporting position usually puts you in the right place."
+  ]
 };
+
+// Returns a random tip string for the given pattern ID.
+function getTip(patternId) {
+  var tips = FALLBACK_TIPS[patternId];
+  if (!tips) return "Keep an eye on patterns in your game and take breaks between sessions.";
+  if (Array.isArray(tips)) return tips[Math.floor(Math.random() * tips.length)];
+  return tips;
+}
 
 
 // Training packs prescribed for each detected pattern.
@@ -801,6 +874,67 @@ const TRAINING_PACKS = {
       name:   "Wall Shot Mastery",
       trains: "Finishing in the tight windows that open against stronger opponents",
       code:   "8989-46CE-AE49-0561"
+    }
+  ],
+  solo_carry: [
+    {
+      name:   "Wall Shot Mastery",
+      trains: "Finishing from the wall — but let your teammate set it up for you",
+      code:   "8989-46CE-AE49-0561"
+    },
+    {
+      name:   "Rings Course",
+      trains: "Field awareness — knowing where your teammate is as you move",
+      code:   "BakkesMod Workshop → search \"Rings by Lethamyr\""
+    }
+  ],
+  no_saves: [
+    {
+      name:   "Protein Goalie",
+      trains: "Reading shot angles and getting back to net in time",
+      code:   "776F-E2BB-2993-78D7"
+    },
+    {
+      name:   "Recovery Training",
+      trains: "Getting back into defensive position after being caught forward",
+      code:   "DA42-75B1-0469-8A0F"
+    }
+  ],
+  accuracy_declining: [
+    {
+      name:   "Power Shots — Gold",
+      trains: "Shooting from set, controlled positions instead of rushed looks",
+      code:   "3B69-B8C9-D4B2-A7E3"
+    },
+    {
+      name:   "Patcher's Shots Consistency",
+      trains: "Hitting the net cleanly from various ground positions",
+      code:   "6CF3-4C0B-32B4-1AC7"
+    }
+  ],
+  win_streak: [],
+  defensive_anchor: [
+    {
+      name:   "Dribbling (Wayprotein)",
+      trains: "Ball control — being dangerous when you do push forward",
+      code:   "3CD7-85FA-811B-BC25"
+    },
+    {
+      name:   "Power Shots — Gold",
+      trains: "Converting the few offensive chances you take into goals",
+      code:   "3B69-B8C9-D4B2-A7E3"
+    }
+  ],
+  no_contribution: [
+    {
+      name:   "Ground Shots — Gold",
+      trains: "Simple, repeatable shots so you convert when you do get a chance",
+      code:   "6EB1-79B2-33B8-681C"
+    },
+    {
+      name:   "Dribbling (Wayprotein)",
+      trains: "Ball control — arriving at the ball in a position to do something useful",
+      code:   "3CD7-85FA-811B-BC25"
     }
   ]
 };
@@ -1443,69 +1577,100 @@ function detectPattern() {
     }
   }
 
-  return null;
-}
+  // Pattern 12: Solo carry — lots of goals but almost no assists
+  if (mg.length >= 10) {
+    var scRecent   = mg.slice(-10);
+    var scGoals    = scRecent.reduce(function(s, g) { return s + g.goals; }, 0) / scRecent.length;
+    var scAssists  = scRecent.reduce(function(s, g) { return s + g.assists; }, 0) / scRecent.length;
 
-
-// ============================================================
-// CLAUDE API
-// ============================================================
-
-function isApiKeySet() {
-  return CLAUDE_API_KEY && CLAUDE_API_KEY !== "paste-your-key-here";
-}
-
-function buildCoachingPrompt(pattern) {
-  var mg = getModeGames();
-  const total   = mg.length;
-  const wins    = mg.filter(function(g) { return g.result === "W"; }).length;
-  const currentMmr = getCurrentMmr();
-
-  function avg(key) {
-    return (mg.reduce(function(s, g) { return s + g[key]; }, 0) / total).toFixed(1);
+    if (scGoals >= 2.0 && scAssists < 0.4) {
+      return {
+        id: "solo_carry",
+        description: scGoals.toFixed(1) + " goals/game but only " + scAssists.toFixed(2) + " assists/game over the last 10 games",
+        conceptId: "rotations",
+        stats: { avgGoals: scGoals.toFixed(1), avgAssists: scAssists.toFixed(2) }
+      };
+    }
   }
 
-  const concept      = CONCEPTS.find(function(c) { return c.id === pattern.conceptId; });
-  const conceptTitle = concept ? concept.title : "game fundamentals";
+  // Pattern 13: No saves — barely registering defensively while losing
+  if (mg.length >= 10) {
+    var nsRecent  = mg.slice(-10);
+    var nsAvgSave = nsRecent.reduce(function(s, g) { return s + g.saves; }, 0) / nsRecent.length;
+    var nsLossRate = nsRecent.filter(function(g) { return g.result === "L"; }).length / nsRecent.length;
 
-  return (
-    "You are a Rocket League coach for a beginner-to-intermediate player. " +
-    "Be encouraging, specific, and use plain language.\n\n" +
-    "Player stats (" + total + " total games):\n" +
-    "- Win rate: " + Math.round((wins / total) * 100) + "%\n" +
-    (currentMmr ? "- Current MMR: " + currentMmr + "\n" : "") +
-    "- Avg goals: " + avg("goals") + "/game\n" +
-    "- Avg assists: " + avg("assists") + "/game\n" +
-    "- Avg saves: " + avg("saves") + "/game\n" +
-    "- Avg shots: " + avg("shots") + "/game\n\n" +
-    "Pattern detected: " + pattern.description + "\n\n" +
-    "Write a coaching tip (2–3 sentences) specifically about \"" + conceptTitle + "\" " +
-    "that addresses this pattern directly. Be concrete and actionable. " +
-    "Do not repeat the pattern description back. " +
-    "The player will also be shown specific training packs to work on — focus your tip on the mental or positional habit to build, not on telling them to practice."
-  );
-}
+    if (nsAvgSave < 0.3 && nsLossRate > 0.5) {
+      return {
+        id: "no_saves",
+        description: "Averaging only " + nsAvgSave.toFixed(2) + " saves per game over the last 10 games while losing " + Math.round(nsLossRate * 100) + "% of them",
+        conceptId: "positioning",
+        stats: { avgSaves: nsAvgSave.toFixed(2), lossRate: Math.round(nsLossRate * 100) }
+      };
+    }
+  }
 
-async function callClaudeAPI(prompt) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": CLAUDE_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 200,
-      messages: [{ role: "user", content: prompt }]
-    })
-  });
+  // Pattern 14: Shot accuracy declining — was better before
+  if (mg.length >= 10) {
+    var olderShots   = mg.slice(-10, -5);
+    var recentShots2 = mg.slice(-5);
+    var oldAcc  = (function() { var s = olderShots.reduce(function(a, g) { return a + g.shots; }, 0); return s > 0 ? olderShots.reduce(function(a, g) { return a + g.goals; }, 0) / s : 0; })();
+    var newAcc  = (function() { var s = recentShots2.reduce(function(a, g) { return a + g.shots; }, 0); return s > 0 ? recentShots2.reduce(function(a, g) { return a + g.goals; }, 0) / s : 0; })();
+    var oldShotAvg = olderShots.reduce(function(a, g) { return a + g.shots; }, 0) / olderShots.length;
 
-  if (!response.ok) throw new Error("API error " + response.status);
+    if (oldShotAvg >= 2 && oldAcc - newAcc >= 0.15) {
+      return {
+        id: "accuracy_declining",
+        description: "Shot accuracy dropped from " + Math.round(oldAcc * 100) + "% to " + Math.round(newAcc * 100) + "% over the last 10 games",
+        conceptId: "game_sense",
+        stats: { previousAcc: Math.round(oldAcc * 100), recentAcc: Math.round(newAcc * 100) }
+      };
+    }
+  }
 
-  const data = await response.json();
-  return data.content[0].text.trim();
+  // Pattern 15: Win streak — positive reinforcement (fires at 5+)
+  var streakInfo = getCurrentStreakInfo();
+  if (streakInfo && streakInfo.type === "W" && streakInfo.count >= 5) {
+    return {
+      id: "win_streak",
+      description: streakInfo.count + "-game win streak",
+      conceptId: "game_sense",
+      stats: { streak: streakInfo.count }
+    };
+  }
+
+  // Pattern 16: Defensive anchor — lots of saves but still losing
+  if (mg.length >= 10) {
+    var daRecent   = mg.slice(-10);
+    var daAvgSaves = daRecent.reduce(function(s, g) { return s + g.saves; }, 0) / daRecent.length;
+    var daLossRate = daRecent.filter(function(g) { return g.result === "L"; }).length / daRecent.length;
+
+    if (daAvgSaves >= 1.8 && daLossRate > 0.6) {
+      return {
+        id: "defensive_anchor",
+        description: daAvgSaves.toFixed(1) + " saves/game over the last 10 games but losing " + Math.round(daLossRate * 100) + "% of them",
+        conceptId: "positioning",
+        stats: { avgSaves: daAvgSaves.toFixed(1), lossRate: Math.round(daLossRate * 100) }
+      };
+    }
+  }
+
+  // Pattern 17: No contribution — goals + assists both near zero
+  if (mg.length >= 10) {
+    var ncRecent      = mg.slice(-10);
+    var ncAvgGoals    = ncRecent.reduce(function(s, g) { return s + g.goals; }, 0) / ncRecent.length;
+    var ncAvgAssists  = ncRecent.reduce(function(s, g) { return s + g.assists; }, 0) / ncRecent.length;
+
+    if (ncAvgGoals + ncAvgAssists < 0.6) {
+      return {
+        id: "no_contribution",
+        description: (ncAvgGoals + ncAvgAssists).toFixed(2) + " combined goals + assists per game over the last 10 games",
+        conceptId: "positioning",
+        stats: { avgGoals: ncAvgGoals.toFixed(2), avgAssists: ncAvgAssists.toFixed(2) }
+      };
+    }
+  }
+
+  return null;
 }
 
 
@@ -1513,7 +1678,7 @@ async function callClaudeAPI(prompt) {
 // COACHING ALERT — display
 // ============================================================
 
-function showCoachingAlert(message, pattern, isLoading) {
+function showCoachingAlert(message, pattern) {
   const alertEl     = document.getElementById("coaching-alert");
   const bodyEl      = document.getElementById("coaching-alert-body");
   const packsEl     = document.getElementById("coaching-packs");
@@ -1525,50 +1690,46 @@ function showCoachingAlert(message, pattern, isLoading) {
 
   // Training packs
   packsEl.textContent = "";
-  if (!isLoading) {
-    var packs = TRAINING_PACKS[pattern.id] || [];
-    if (packs.length > 0) {
-      var label = document.createElement("div");
-      label.className   = "coaching-packs-label";
-      label.textContent = "Prescribed Training";
-      packsEl.appendChild(label);
+  var packs = TRAINING_PACKS[pattern.id] || [];
+  if (packs.length > 0) {
+    var label = document.createElement("div");
+    label.className   = "coaching-packs-label";
+    label.textContent = "Prescribed Training";
+    packsEl.appendChild(label);
 
-      packs.forEach(function(pack) {
-        var card = document.createElement("div");
-        card.className = "coaching-pack-card";
+    packs.forEach(function(pack) {
+      var card = document.createElement("div");
+      card.className = "coaching-pack-card";
 
-        var name = document.createElement("div");
-        name.className   = "coaching-pack-name";
-        name.textContent = pack.name;
+      var name = document.createElement("div");
+      name.className   = "coaching-pack-name";
+      name.textContent = pack.name;
 
-        var trains = document.createElement("div");
-        trains.className   = "coaching-pack-trains";
-        trains.textContent = pack.trains;
+      var trains = document.createElement("div");
+      trains.className   = "coaching-pack-trains";
+      trains.textContent = pack.trains;
 
-        var how = document.createElement("div");
-        how.className   = "coaching-pack-how";
-        how.textContent = pack.code;
+      var how = document.createElement("div");
+      how.className   = "coaching-pack-how";
+      how.textContent = pack.code;
 
-        card.appendChild(name);
-        card.appendChild(trains);
-        card.appendChild(how);
-        packsEl.appendChild(card);
-      });
-    }
+      card.appendChild(name);
+      card.appendChild(trains);
+      card.appendChild(how);
+      packsEl.appendChild(card);
+    });
   }
 
-  if (isLoading) {
-    conceptLink.style.display = "none";
+  const concept = CONCEPTS.find(function(c) { return c.id === pattern.conceptId; });
+  if (concept) {
+    conceptLink.textContent   = "Learn more about " + concept.title + " ↓";
+    conceptLink.style.display = "inline";
+    conceptLink.onclick = function(e) {
+      e.preventDefault();
+      openConcept(concept.id);
+    };
   } else {
-    const concept = CONCEPTS.find(function(c) { return c.id === pattern.conceptId; });
-    if (concept) {
-      conceptLink.textContent   = "Learn more about " + concept.title + " ↓";
-      conceptLink.style.display = "inline";
-      conceptLink.onclick = function(e) {
-        e.preventDefault();
-        openConcept(concept.id);
-      };
-    }
+    conceptLink.style.display = "none";
   }
 }
 
@@ -1577,7 +1738,7 @@ function dismissCoachingAlert() {
   coachingAlertActive = false;
 }
 
-async function runCoachingCheck() {
+function runCoachingCheck() {
   if (coachingAlertActive) return;
   if (gamesLoggedSinceLastAlert < MIN_GAMES_BETWEEN_ALERTS) return;
 
@@ -1585,25 +1746,7 @@ async function runCoachingCheck() {
   if (!pattern) return;
 
   gamesLoggedSinceLastAlert = 0;
-
-  if (!isApiKeySet()) {
-    const fallback = FALLBACK_TIPS[pattern.id] || "Keep an eye on patterns in your game and take breaks between sessions.";
-    showCoachingAlert(fallback, pattern, false);
-    return;
-  }
-
-  showCoachingAlert("Getting your coaching tip…", pattern, true);
-
-  try {
-    const tip = await callClaudeAPI(buildCoachingPrompt(pattern));
-    if (!coachingAlertActive) return;
-    showCoachingAlert(tip, pattern, false);
-  } catch (error) {
-    console.error("Coaching API error:", error);
-    if (!coachingAlertActive) return;
-    const fallback = FALLBACK_TIPS[pattern.id] || "Keep an eye on patterns in your game and take breaks between sessions.";
-    showCoachingAlert(fallback, pattern, false);
-  }
+  showCoachingAlert(getTip(pattern.id), pattern);
 }
 
 
