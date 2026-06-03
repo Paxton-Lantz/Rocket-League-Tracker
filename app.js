@@ -964,8 +964,38 @@ let gamesLoggedSinceLastAlert = 0;
 
 // Capture daemon state
 let lastCaptureTimestamp   = 0;
-let lastCaptureWallTime    = 0;   // Date.now() of the last successful capture
+let lastCaptureWallTime    = 0;
 let capturePollingInterval = null;
+
+// Setup tab checkpoint state
+let _setupDaemonOnline  = false;
+let _setupUsernameKnown = false;  // daemon received and confirmed the username
+
+// Updates the three setup step cards based on what's been detected.
+// Step 1: daemon online  Step 2: username known  Step 3: a game has been logged
+function updateSetupProgress() {
+  var step1 = _setupDaemonOnline;
+  var step2 = _setupDaemonOnline && _setupUsernameKnown;
+  var step3 = games.length > 0;
+
+  _applyStepState(1, step1 ? "complete" : "active");
+  _applyStepState(2, step1 ? (step2 ? "complete" : "active") : "pending");
+  _applyStepState(3, step2 ? (step3 ? "complete" : "active") : "pending");
+
+  var c1 = document.getElementById("setup-connector-1");
+  var c2 = document.getElementById("setup-connector-2");
+  if (c1) c1.classList.toggle("filled", step1);
+  if (c2) c2.classList.toggle("filled", step2);
+}
+
+function _applyStepState(num, state) {
+  var card  = document.getElementById("setup-step-" + num);
+  var badge = document.getElementById("setup-badge-" + num);
+  if (!card || !badge) return;
+  card.classList.remove("setup-step-pending", "setup-step-active", "setup-step-complete");
+  card.classList.add("setup-step-" + state);
+  badge.textContent = state === "complete" ? "✓" : String(num);
+}
 
 // Downloads a default config.json for multi-monitor users.
 function downloadConfigJson() {
@@ -1440,15 +1470,21 @@ function testCaptureConnection() {
   fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(data) {
+      _setupDaemonOnline  = true;
+      _setupUsernameKnown = !!data.username;
+      updateSetupProgress();
       if (!data.tesseract_ok) {
         updateCaptureStatus("disconnected", "OCR engine failed — see rl-capture.log");
       } else if (data.username) {
         updateCaptureStatus("connected", "Connected · Watching for: " + data.username);
       } else {
-        updateCaptureStatus("connected"); // will show username hint if field is empty
+        updateCaptureStatus("connected");
       }
     })
     .catch(function() {
+      _setupDaemonOnline  = false;
+      _setupUsernameKnown = false;
+      updateSetupProgress();
       updateCaptureStatus(activeSession ? "warning" : "disconnected");
     });
 }
@@ -3071,6 +3107,7 @@ function handleFormSubmit(e) {
 
   updateSummaryBar();
   updateWelcomeBanner();
+  updateSetupProgress();
   updateStreak();
   updateTiltWarning();
   updateSessionHeader();
@@ -3169,6 +3206,26 @@ function setActiveMode(mode) {
 // Wires up the mode tab buttons.
 // Wires the Tracker / Setup Guide tabs in the main nav.
 function initMainNav() {
+  var setupPollInterval = null;
+
+  function pollSetupStatus() {
+    var username = getCaptureUsername();
+    var url = "http://localhost:" + CAPTURE_PORT + "/status"
+            + (username ? "?username=" + encodeURIComponent(username) : "");
+    fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        _setupDaemonOnline  = true;
+        _setupUsernameKnown = !!data.username;
+        updateSetupProgress();
+      })
+      .catch(function() {
+        _setupDaemonOnline  = false;
+        _setupUsernameKnown = false;
+        updateSetupProgress();
+      });
+  }
+
   document.querySelectorAll(".main-tab").forEach(function(btn) {
     btn.addEventListener("click", function() {
       document.querySelectorAll(".main-tab").forEach(function(b) { b.classList.remove("active"); });
@@ -3177,6 +3234,16 @@ function initMainNav() {
       var view = btn.dataset.view;
       document.getElementById("tracker-view").style.display = view === "tracker" ? "block" : "none";
       document.getElementById("setup-view").style.display   = view === "setup"   ? "block" : "none";
+
+      if (view === "setup") {
+        // Immediately check and update, then poll every 3s
+        updateSetupProgress();
+        pollSetupStatus();
+        setupPollInterval = setInterval(pollSetupStatus, 3000);
+      } else {
+        clearInterval(setupPollInterval);
+        setupPollInterval = null;
+      }
     });
   });
 }

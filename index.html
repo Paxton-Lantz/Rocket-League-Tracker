@@ -538,26 +538,32 @@
       <div class="setup-section">
         <div class="setup-steps-row">
 
-          <div class="setup-step-card">
-            <div class="setup-step-num">1</div>
+          <div class="setup-step-card setup-step-active" id="setup-step-1">
+            <div class="setup-step-num" id="setup-badge-1">1</div>
             <div class="setup-step-icon">💾</div>
             <div class="setup-step-title">Download &amp; run</div>
             <div class="setup-step-desc">Double-click <code>rl-capture.exe</code>. A small icon appears in your system tray. It registers itself to start automatically every time Windows boots.</div>
           </div>
 
-          <div class="setup-step-arrow">→</div>
+          <div class="setup-step-connector" id="setup-connector-1">
+            <div class="setup-connector-line"></div>
+            <span class="setup-connector-arrow">›</span>
+          </div>
 
-          <div class="setup-step-card">
-            <div class="setup-step-num">2</div>
+          <div class="setup-step-card setup-step-pending" id="setup-step-2">
+            <div class="setup-step-num" id="setup-badge-2">2</div>
             <div class="setup-step-icon">✏️</div>
             <div class="setup-step-title">Enter your username</div>
             <div class="setup-step-desc">On the Tracker tab, type your Epic Games display name into the <strong>Epic username</strong> field above the log form. Saved automatically. You only do this once.</div>
           </div>
 
-          <div class="setup-step-arrow">→</div>
+          <div class="setup-step-connector" id="setup-connector-2">
+            <div class="setup-connector-line"></div>
+            <span class="setup-connector-arrow">›</span>
+          </div>
 
-          <div class="setup-step-card setup-step-card-done">
-            <div class="setup-step-num setup-step-num-done">✓</div>
+          <div class="setup-step-card setup-step-pending" id="setup-step-3">
+            <div class="setup-step-num" id="setup-badge-3">3</div>
             <div class="setup-step-icon">🎮</div>
             <div class="setup-step-title">Play &amp; it just works</div>
             <div class="setup-step-desc">Start a session, queue up. When a game ends, the log form fills in automatically within a second of the scoreboard appearing. Hit Enter to confirm.</div>

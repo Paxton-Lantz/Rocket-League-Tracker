@@ -2631,10 +2631,6 @@ button { font-family: inherit; cursor: pointer; }
   position: relative;
 }
 
-.setup-step-card-done {
-  border-color: var(--win);
-  box-shadow: 0 0 0 1px rgba(22,163,74,0.15), var(--shadow-sm);
-}
 
 .setup-step-num {
   position: absolute;
@@ -2686,16 +2682,84 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 4px;
 }
 
-.setup-step-arrow {
-  font-size: 1.4rem;
-  color: var(--text-3);
+/* ── Step state variants ─────────────────────────────────────────────────────── */
+
+.setup-step-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim), var(--shadow-sm);
+  animation: step-pulse 2.4s ease-in-out infinite;
+}
+
+.setup-step-complete {
+  border-color: var(--win);
+  box-shadow: 0 0 0 1px rgba(22,163,74,0.18), var(--shadow-sm);
+}
+
+.setup-step-pending {
+  opacity: 0.55;
+}
+
+@keyframes step-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-dim), var(--shadow-sm); }
+  50%       { box-shadow: 0 0 0 5px var(--accent-dim), var(--shadow-sm); }
+}
+
+/* Badge colours driven by parent state */
+.setup-step-pending  .setup-step-num { background: var(--text-3); box-shadow: none; }
+.setup-step-active   .setup-step-num { background: var(--accent); }
+.setup-step-complete .setup-step-num {
+  background: var(--win);
+  box-shadow: 0 2px 8px rgba(22,163,74,0.30);
+  font-size: 0.78rem;
+}
+
+/* ── Step connector (fillable progress bar between cards) ─────────────────────── */
+
+.setup-step-connector {
   flex-shrink: 0;
-  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 36px;
+}
+
+.setup-connector-line {
+  flex: 1;
+  height: 3px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.setup-connector-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--win);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.55s cubic-bezier(0.22,1,0.36,1);
+}
+
+.setup-step-connector.filled .setup-connector-line::after {
+  transform: scaleX(1);
+}
+
+.setup-connector-arrow {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-3);
+  transition: color 0.4s ease;
+}
+
+.setup-step-connector.filled .setup-connector-arrow {
+  color: var(--win);
 }
 
 @media (max-width: 580px) {
-  .setup-step-arrow { display: none; }
-  .setup-steps-row  { gap: 16px; }
+  .setup-step-connector { display: none; }
+  .setup-steps-row      { gap: 16px; }
 }
 
 /* ── Setup guide download buttons ──────────────────────────────────────────── */
