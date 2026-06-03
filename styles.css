@@ -2570,6 +2570,134 @@ button { font-family: inherit; cursor: pointer; }
   animation: capture-flash 1s ease-out;
 }
 
+/* ── Setup hero bar ─────────────────────────────────────────────────────────── */
+
+.setup-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+  border-radius: var(--radius);
+  padding: 22px 28px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.setup-hero-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.setup-hero-sub {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.65);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.setup-hero-btn {
+  flex-shrink: 0;
+  background: #fff !important;
+  color: var(--accent) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.20) !important;
+  font-size: 0.9rem !important;
+  padding: 11px 22px !important;
+}
+
+.setup-hero-btn:hover {
+  background: rgba(255,255,255,0.92) !important;
+}
+
+/* ── Horizontal step cards ───────────────────────────────────────────────────── */
+
+.setup-steps-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.setup-step-card {
+  flex: 1;
+  min-width: 180px;
+  padding: 20px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.setup-step-card-done {
+  border-color: var(--win);
+  box-shadow: 0 0 0 1px rgba(22,163,74,0.15), var(--shadow-sm);
+}
+
+.setup-step-num {
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.setup-step-num-done {
+  background: var(--win);
+  box-shadow: 0 2px 8px rgba(22,163,74,0.30);
+}
+
+.setup-step-icon {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.setup-step-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.setup-step-desc {
+  font-size: 0.80rem;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+.setup-step-desc code {
+  font-family: "SF Mono","Fira Code","Consolas",monospace;
+  font-size: 0.76rem;
+  background: rgba(37,99,235,0.07);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.setup-step-arrow {
+  font-size: 1.4rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+@media (max-width: 580px) {
+  .setup-step-arrow { display: none; }
+  .setup-steps-row  { gap: 16px; }
+}
+
 /* ── Setup guide download buttons ──────────────────────────────────────────── */
 
 .setup-download-row {

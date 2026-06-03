@@ -523,10 +523,53 @@
     ============================================= -->
     <div id="setup-view">
 
+      <!-- ── Hero: download + 3 steps ──────────────── -->
+      <div class="setup-hero">
+        <div class="setup-hero-text">
+          <div class="setup-hero-title">Auto-Capture Setup</div>
+          <div class="setup-hero-sub">Windows only · 2 minutes · done forever</div>
+        </div>
+        <a href="https://github.com/Paxton-Lantz/Rocket-League-Tracker/releases/latest"
+           target="_blank" rel="noopener"
+           class="setup-dl-btn setup-dl-primary setup-hero-btn">⬇ Download rl-capture.exe</a>
+      </div>
+
+      <!-- ── Steps ─────────────────────────────────── -->
+      <div class="setup-section">
+        <div class="setup-steps-row">
+
+          <div class="setup-step-card">
+            <div class="setup-step-num">1</div>
+            <div class="setup-step-icon">💾</div>
+            <div class="setup-step-title">Download &amp; run</div>
+            <div class="setup-step-desc">Double-click <code>rl-capture.exe</code>. A small icon appears in your system tray. It registers itself to start automatically every time Windows boots.</div>
+          </div>
+
+          <div class="setup-step-arrow">→</div>
+
+          <div class="setup-step-card">
+            <div class="setup-step-num">2</div>
+            <div class="setup-step-icon">✏️</div>
+            <div class="setup-step-title">Enter your username</div>
+            <div class="setup-step-desc">On the Tracker tab, type your Epic Games display name into the <strong>Epic username</strong> field above the log form. Saved automatically. You only do this once.</div>
+          </div>
+
+          <div class="setup-step-arrow">→</div>
+
+          <div class="setup-step-card setup-step-card-done">
+            <div class="setup-step-num setup-step-num-done">✓</div>
+            <div class="setup-step-icon">🎮</div>
+            <div class="setup-step-title">Play &amp; it just works</div>
+            <div class="setup-step-desc">Start a session, queue up. When a game ends, the log form fills in automatically within a second of the scoreboard appearing. Hit Enter to confirm.</div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ── How it works ──────────────────────────── -->
       <div class="setup-section">
         <h2 class="setup-heading">How It Works</h2>
-        <p class="setup-subhead">A small background program watches your screen. When a game ends and the scoreboard appears, it reads your stats and sends them here automatically. You just hit Enter to confirm.</p>
+        <p class="setup-subhead">The program watches your screen in the background. When it sees the post-game scoreboard it reads your stats and sends them here — no button needed.</p>
 
         <div class="flow-diagram">
           <div class="flow-step">
@@ -556,25 +599,21 @@
         </div>
       </div>
 
-      <!-- ── Scoreboard reference diagram ────────────── -->
+      <!-- ── Scoreboard reference ───────────────────── -->
       <div class="setup-section">
-        <h2 class="setup-heading">What Gets Captured From the Scoreboard</h2>
-        <p class="setup-subhead">Every piece of information on the post-game screen, and whether the capture daemon reads it.</p>
+        <h2 class="setup-heading">What Gets Captured</h2>
+        <p class="setup-subhead">Every field on the post-game scoreboard, colour-coded by whether it's logged automatically.</p>
 
         <div class="sb-diagram">
-
-          <!-- game result bar -->
           <div class="sb-result-bar">
             <span class="sb-tag sb-tag-dim">not captured</span>
             <span class="sb-result-text">WINNER BLUE &nbsp;·&nbsp; 6 – 4</span>
           </div>
-
-          <!-- column annotation labels -->
           <div class="sb-col-annotations">
             <div class="sb-ann sb-ann-captured">MMR<br>delta</div>
             <div class="sb-ann sb-ann-captured">Current<br>MMR</div>
             <div class="sb-ann sb-ann-dim">Rank<br>badge</div>
-            <div class="sb-ann sb-ann-dim">Username<br><em>(used for detection)</em></div>
+            <div class="sb-ann sb-ann-dim">Username<br><em>(detection only)</em></div>
             <div class="sb-ann sb-ann-captured">Goals</div>
             <div class="sb-ann sb-ann-captured">Assists</div>
             <div class="sb-ann sb-ann-captured">Saves</div>
@@ -582,10 +621,7 @@
             <div class="sb-ann sb-ann-captured">MVP</div>
             <div class="sb-ann sb-ann-dim">Game<br>score</div>
           </div>
-
-          <!-- your team -->
           <div class="sb-team-header sb-team-blue">YOUR TEAM (BLUE)</div>
-
           <div class="sb-row sb-row-you">
             <div class="sb-cell sb-cap">+9</div>
             <div class="sb-cell sb-cap">762</div>
@@ -598,7 +634,6 @@
             <div class="sb-cell sb-cap sb-mvp">★</div>
             <div class="sb-cell sb-dim">827</div>
           </div>
-
           <div class="sb-row">
             <div class="sb-cell sb-dim sb-dim-note">+14<br><small>not used</small></div>
             <div class="sb-cell sb-dim sb-dim-note">781<br><small>teammate</small></div>
@@ -611,10 +646,7 @@
             <div class="sb-cell sb-dim"></div>
             <div class="sb-cell sb-dim">697</div>
           </div>
-
-          <!-- opponent team -->
           <div class="sb-team-header sb-team-orange">OPPONENT TEAM (THE FERRETS)</div>
-
           <div class="sb-row">
             <div class="sb-cell sb-dim">−9</div>
             <div class="sb-cell sb-cap-opp sb-dim-note">718<br><small>↓ averaged</small></div>
@@ -627,7 +659,6 @@
             <div class="sb-cell sb-dim"></div>
             <div class="sb-cell sb-dim">611</div>
           </div>
-
           <div class="sb-row">
             <div class="sb-cell sb-dim">−14</div>
             <div class="sb-cell sb-cap-opp sb-dim-note">761<br><small>↓ averaged</small></div>
@@ -640,55 +671,13 @@
             <div class="sb-cell sb-dim"></div>
             <div class="sb-cell sb-dim">352</div>
           </div>
-
           <div class="sb-opp-mmr-note">Opponent MMR logged as average: (718 + 761) ÷ 2 = <strong>739</strong></div>
-
         </div>
 
-        <!-- legend -->
         <div class="sb-legend">
           <span class="sb-legend-cap">■ Captured automatically</span>
           <span class="sb-legend-opp">■ Opponent MMR (averaged)</span>
           <span class="sb-legend-dim">■ Visible but not captured</span>
-        </div>
-      </div>
-
-      <!-- ── Setup: just 2 steps ───────────────────── -->
-      <div class="setup-section">
-        <h2 class="setup-heading">Setup — 2 Steps, Done Forever</h2>
-
-        <div class="setup-session-steps">
-          <div class="session-step">
-            <div class="session-step-num">1</div>
-            <div class="session-step-body">
-              <strong>Download and run rl-capture.exe</strong>
-              <p>Double-click it. A small icon appears in your system tray. It starts automatically every time Windows boots — you never have to think about it again.</p>
-              <div class="setup-download-row">
-                <a href="https://github.com/Paxton-Lantz/Rocket-League-Tracker/releases/latest" target="_blank" rel="noopener" class="setup-dl-btn setup-dl-primary">⬇ Download rl-capture.exe</a>
-                <button onclick="downloadConfigJson()" class="setup-dl-btn setup-dl-secondary">⬇ config.json <span class="setup-dl-note">(2nd monitor only)</span></button>
-              </div>
-            </div>
-          </div>
-          <div class="session-step-connector"></div>
-          <div class="session-step">
-            <div class="session-step-num">2</div>
-            <div class="session-step-body">
-              <strong>Type your Epic username above the log form</strong>
-              <p>Go to the Tracker tab. Find the "Epic username" box above the log form and type your exact in-game name. It saves automatically. You only do this once.</p>
-              <div class="setup-username-demo">
-                <span class="setup-username-demo-label">Epic username</span>
-                <span class="setup-username-demo-input">YourEpicName</span>
-              </div>
-            </div>
-          </div>
-          <div class="session-step-connector"></div>
-          <div class="session-step">
-            <div class="session-step-num">✓</div>
-            <div class="session-step-body">
-              <strong>That's it — you're done</strong>
-              <p>Start a session, play Rocket League. After each game the form fills in automatically within a second of the scoreboard appearing.</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -702,15 +691,19 @@
           </div>
           <div class="trouble-row">
             <div class="trouble-symptom">Running but stats don't fill in</div>
-            <div class="trouble-fix">Double-check the Epic username box — it must match your exact in-game name (e.g. <em>xX_ProPlayer_Xx</em>). Case doesn't matter. Club tags are optional.</div>
+            <div class="trouble-fix">Double-check the Epic username field on the Tracker tab — it must match your exact in-game name. Case doesn't matter, club tags are optional.</div>
           </div>
           <div class="trouble-row">
-            <div class="trouble-symptom">Stats fill but all zeroes / wrong numbers</div>
-            <div class="trouble-fix">The scoreboard wasn't fully loaded when captured. This is rare — just correct the numbers manually before hitting Enter.</div>
+            <div class="trouble-symptom">Stats fill but numbers look wrong</div>
+            <div class="trouble-fix">The scoreboard wasn't fully visible when captured. Just correct the numbers manually before hitting Enter — it's rare.</div>
           </div>
           <div class="trouble-row">
             <div class="trouble-symptom">Rocket League is on a second monitor</div>
-            <div class="trouble-fix">Make sure Rocket League is open when you launch rl-capture.exe — it auto-detects the right monitor. If that doesn't work, download <button onclick="downloadConfigJson()" class="trouble-dl-btn">config.json</button> and place it next to the exe.</div>
+            <div class="trouble-fix">Launch Rocket League first, then start rl-capture.exe — it auto-detects the right screen. If it still misses, download <button onclick="downloadConfigJson()" class="trouble-dl-btn">config.json</button> and place it next to the exe.</div>
+          </div>
+          <div class="trouble-row">
+            <div class="trouble-symptom">Need the config.json file</div>
+            <div class="trouble-fix"><button onclick="downloadConfigJson()" class="setup-dl-btn setup-dl-secondary" style="margin:0">⬇ Download config.json</button> — place it next to rl-capture.exe. Edit "monitor" to match which screen RL is on (1 = primary, 2 = secondary).</div>
           </div>
         </div>
       </div>
