@@ -2570,6 +2570,197 @@ button { font-family: inherit; cursor: pointer; }
   animation: capture-flash 1s ease-out;
 }
 
+/* ── Scoreboard diagram (Setup Guide) ──────────────────────────────────────── */
+
+.sb-diagram {
+  background: #080d1e;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+
+.sb-result-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(37, 99, 235, 0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.sb-result-text {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #dce8ff;
+  letter-spacing: 0.04em;
+}
+
+.sb-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.sb-tag-dim {
+  background: rgba(255,255,255,0.07);
+  color: rgba(220,232,255,0.35);
+}
+
+/* Column annotation labels above the grid */
+.sb-col-annotations {
+  display: grid;
+  grid-template-columns: 52px 60px 44px 1fr 44px 44px 44px 44px 38px 52px;
+  gap: 0;
+  padding: 10px 8px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.sb-ann {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.4;
+  padding: 4px 2px;
+  border-radius: 5px;
+}
+
+.sb-ann em {
+  font-style: normal;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.sb-ann-captured {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.10);
+}
+
+.sb-ann-dim {
+  color: rgba(220,232,255,0.30);
+}
+
+/* Team header banners */
+.sb-team-header {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+}
+
+.sb-team-blue   { background: rgba(37, 99, 235, 0.22); color: #93c5fd; }
+.sb-team-orange { background: rgba(234, 88, 12, 0.22); color: #fdba74; }
+
+/* Player rows */
+.sb-row {
+  display: grid;
+  grid-template-columns: 52px 60px 44px 1fr 44px 44px 44px 44px 38px 52px;
+  gap: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  align-items: center;
+}
+
+.sb-row-you {
+  background: rgba(37, 99, 235, 0.10);
+}
+
+.sb-cell {
+  padding: 9px 4px;
+  text-align: center;
+  font-size: 0.80rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sb-name-cell {
+  text-align: left;
+  padding-left: 10px;
+  color: #dce8ff;
+  font-weight: 600;
+}
+
+.sb-name-cell small {
+  font-size: 0.66rem;
+  color: rgba(220,232,255,0.35);
+  font-weight: 400;
+}
+
+/* Captured — green glow */
+.sb-cap {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.07);
+  font-weight: 700;
+}
+
+/* Opponent MMR — amber, since it gets averaged */
+.sb-cap-opp {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.08);
+  font-weight: 700;
+}
+
+/* Not captured — dimmed */
+.sb-dim {
+  color: rgba(220,232,255,0.28);
+}
+
+.sb-dim-note {
+  font-size: 0.70rem;
+  line-height: 1.4;
+}
+
+.sb-dim-note small {
+  font-size: 0.60rem;
+  color: rgba(220,232,255,0.22);
+  font-weight: 400;
+}
+
+.sb-mvp { color: #fbbf24; font-size: 1rem; }
+
+.sb-you-badge {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 99px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.sb-opp-mmr-note {
+  padding: 10px 16px;
+  font-size: 0.76rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.06);
+  border-top: 1px solid rgba(251, 191, 36, 0.12);
+}
+
+/* Legend */
+.sb-legend {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.sb-legend-cap  { color: #4ade80; }
+.sb-legend-opp  { color: #fbbf24; }
+.sb-legend-dim  { color: var(--text-3); }
+
 /* ── Widget hint banner ─────────────────────────────────────────────────────── */
 
 #widget-hint-banner {

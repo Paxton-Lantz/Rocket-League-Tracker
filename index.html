@@ -556,6 +556,103 @@
         </div>
       </div>
 
+      <!-- ── Scoreboard reference diagram ────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">What Gets Captured From the Scoreboard</h2>
+        <p class="setup-subhead">Every piece of information on the post-game screen, and whether the capture daemon reads it.</p>
+
+        <div class="sb-diagram">
+
+          <!-- game result bar -->
+          <div class="sb-result-bar">
+            <span class="sb-tag sb-tag-dim">not captured</span>
+            <span class="sb-result-text">WINNER BLUE &nbsp;·&nbsp; 6 – 4</span>
+          </div>
+
+          <!-- column annotation labels -->
+          <div class="sb-col-annotations">
+            <div class="sb-ann sb-ann-captured">MMR<br>delta</div>
+            <div class="sb-ann sb-ann-captured">Current<br>MMR</div>
+            <div class="sb-ann sb-ann-dim">Rank<br>badge</div>
+            <div class="sb-ann sb-ann-dim">Username<br><em>(used for detection)</em></div>
+            <div class="sb-ann sb-ann-captured">Goals</div>
+            <div class="sb-ann sb-ann-captured">Assists</div>
+            <div class="sb-ann sb-ann-captured">Saves</div>
+            <div class="sb-ann sb-ann-captured">Shots</div>
+            <div class="sb-ann sb-ann-captured">MVP</div>
+            <div class="sb-ann sb-ann-dim">Game<br>score</div>
+          </div>
+
+          <!-- your team -->
+          <div class="sb-team-header sb-team-blue">YOUR TEAM (BLUE)</div>
+
+          <div class="sb-row sb-row-you">
+            <div class="sb-cell sb-cap">+9</div>
+            <div class="sb-cell sb-cap">762</div>
+            <div class="sb-cell sb-dim">⬡</div>
+            <div class="sb-cell sb-dim sb-name-cell">[VICT] <strong>Exwarrior187</strong> <span class="sb-you-badge">YOU</span><br><small>NO MISS JUST FAKE</small></div>
+            <div class="sb-cell sb-cap">2</div>
+            <div class="sb-cell sb-cap">1</div>
+            <div class="sb-cell sb-cap">3</div>
+            <div class="sb-cell sb-cap">5</div>
+            <div class="sb-cell sb-cap sb-mvp">★</div>
+            <div class="sb-cell sb-dim">827</div>
+          </div>
+
+          <div class="sb-row">
+            <div class="sb-cell sb-dim sb-dim-note">+14<br><small>not used</small></div>
+            <div class="sb-cell sb-dim sb-dim-note">781<br><small>teammate</small></div>
+            <div class="sb-cell sb-dim">⬡</div>
+            <div class="sb-cell sb-dim sb-name-cell">[YY] Toothless04040<br><small>FLOW STATE</small></div>
+            <div class="sb-cell sb-dim">1</div>
+            <div class="sb-cell sb-dim">2</div>
+            <div class="sb-cell sb-dim">1</div>
+            <div class="sb-cell sb-dim">3</div>
+            <div class="sb-cell sb-dim"></div>
+            <div class="sb-cell sb-dim">697</div>
+          </div>
+
+          <!-- opponent team -->
+          <div class="sb-team-header sb-team-orange">OPPONENT TEAM (THE FERRETS)</div>
+
+          <div class="sb-row">
+            <div class="sb-cell sb-dim">−9</div>
+            <div class="sb-cell sb-cap-opp sb-dim-note">718<br><small>↓ averaged</small></div>
+            <div class="sb-cell sb-dim">⬡</div>
+            <div class="sb-cell sb-dim sb-name-cell">[TF] Saapen1101<br><small>S20</small></div>
+            <div class="sb-cell sb-dim">1</div>
+            <div class="sb-cell sb-dim">0</div>
+            <div class="sb-cell sb-dim">2</div>
+            <div class="sb-cell sb-dim">4</div>
+            <div class="sb-cell sb-dim"></div>
+            <div class="sb-cell sb-dim">611</div>
+          </div>
+
+          <div class="sb-row">
+            <div class="sb-cell sb-dim">−14</div>
+            <div class="sb-cell sb-cap-opp sb-dim-note">761<br><small>↓ averaged</small></div>
+            <div class="sb-cell sb-dim">⬡</div>
+            <div class="sb-cell sb-dim sb-name-cell">[TF] irtbuneff<br><small>S20</small></div>
+            <div class="sb-cell sb-dim">0</div>
+            <div class="sb-cell sb-dim">1</div>
+            <div class="sb-cell sb-dim">1</div>
+            <div class="sb-cell sb-dim">2</div>
+            <div class="sb-cell sb-dim"></div>
+            <div class="sb-cell sb-dim">352</div>
+          </div>
+
+          <div class="sb-opp-mmr-note">Opponent MMR logged as average: (718 + 761) ÷ 2 = <strong>739</strong></div>
+
+        </div>
+
+        <!-- legend -->
+        <div class="sb-legend">
+          <span class="sb-legend-cap">■ Captured automatically</span>
+          <span class="sb-legend-opp">■ Opponent MMR (averaged)</span>
+          <span class="sb-legend-dim">■ Visible but not captured</span>
+        </div>
+      </div>
+
       <!-- ── Setup: just 2 steps ───────────────────── -->
       <div class="setup-section">
         <h2 class="setup-heading">Setup — 2 Steps, Done Forever</h2>
