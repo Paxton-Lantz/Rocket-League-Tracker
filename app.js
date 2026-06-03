@@ -1264,13 +1264,44 @@ function applyCapture(data) {
   document.getElementById("shots-input").value       = data.shots;
   document.getElementById("mvp-checkbox").checked    = data.mvp;
 
-  // Brief green flash on the form so the user knows data arrived
+  // Focus the MMR field so the user can review and hit Enter immediately
+  var mmrInput = document.getElementById("mmr-change-input");
+  if (mmrInput) mmrInput.focus();
+
+  // Brief green flash on the log form
   var form = document.getElementById("log-form");
   form.classList.add("capture-flash");
   setTimeout(function() { form.classList.remove("capture-flash"); }, 1000);
 
+  // Big MMR pop in the mini widget if it's open
+  showMiniFlash(data.mmr_delta);
+
   lastCaptureWallTime = Date.now();
   updateCaptureStatus("connected");
+}
+
+// Show the full-widget MMR flash for 3 seconds, then fade back to normal.
+var _miniFlashTimer = null;
+
+function showMiniFlash(mmrDelta) {
+  var flash  = document.getElementById("mini-flash");
+  var mmrEl  = document.getElementById("mini-flash-mmr");
+  var widget = document.getElementById("mini-widget");
+  if (!flash || !mmrEl || !widget || !widget.classList.contains("visible")) return;
+
+  if (_miniFlashTimer) clearTimeout(_miniFlashTimer);
+
+  var isWin = mmrDelta > 0;
+  mmrEl.textContent = (mmrDelta > 0 ? "+" : "") + mmrDelta;
+  flash.classList.remove("flash-win", "flash-loss", "flash-active");
+  // Force a reflow so removing + re-adding "flash-active" always re-triggers the transition
+  flash.offsetWidth;
+  flash.classList.add(isWin ? "flash-win" : "flash-loss", "flash-active");
+
+  _miniFlashTimer = setTimeout(function() {
+    flash.classList.remove("flash-active");
+    _miniFlashTimer = null;
+  }, 3000);
 }
 
 // Update the small status pill shown above the log form.
@@ -1282,7 +1313,13 @@ function updateCaptureStatus(state) {
   var label    = "";
   var cssState = state;
 
-  if (state === "connected") {
+  if (state === "idle") {
+    // If username is not set, nudge the user instead of staying silent
+    if (!getCaptureUsername()) {
+      label    = "← Set your Epic username to enable auto-fill";
+      cssState = "hint";
+    }
+  } else if (state === "connected") {
     if (lastCaptureWallTime) {
       var secsAgo = Math.floor((Date.now() - lastCaptureWallTime) / 1000);
       if (secsAgo < 8) {
@@ -1297,9 +1334,14 @@ function updateCaptureStatus(state) {
       label = "Capture Ready";
     }
   } else if (state === "disconnected") {
-    label = "Capture Offline";
+    // Amber + pulsing dot when offline during an active session; grey otherwise
+    if (activeSession) {
+      label    = "Capture Offline";
+      cssState = "warning";
+    } else {
+      label = "Capture Offline";
+    }
   }
-  // idle: label stays ""
 
   el.className   = "capture-status capture-status-" + cssState;
   el.textContent = label;
@@ -3316,14 +3358,27 @@ function init() {
   document.getElementById("coaching-dismiss-btn").addEventListener("click", dismissCoachingAlert);
   document.getElementById("log-form").addEventListener("submit", handleFormSubmit);
 
-  // Pre-fill username input from localStorage and save changes back
-  var usernameInput = document.getElementById("capture-username-input");
+  // Pre-fill username input from localStorage; auto-save + auto-test on change
+  var usernameInput    = document.getElementById("capture-username-input");
+  var usernameTestTimer = null;
   if (usernameInput) {
     usernameInput.value = getCaptureUsername();
     usernameInput.addEventListener("input", function() {
       setCaptureUsername(usernameInput.value);
+      // Show hint state while field is empty, clear debounce timer
+      if (!usernameInput.value.trim()) {
+        updateCaptureStatus("idle");
+        clearTimeout(usernameTestTimer);
+        return;
+      }
+      // Auto-test connection 1 second after typing stops — gives instant feedback
+      clearTimeout(usernameTestTimer);
+      usernameTestTimer = setTimeout(testCaptureConnection, 1000);
     });
   }
+
+  // Show username hint on page load if field is empty
+  updateCaptureStatus("idle");
 
   // Wire capture test button
   var captureTestBtn = document.getElementById("capture-test-btn");

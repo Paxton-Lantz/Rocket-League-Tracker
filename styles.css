@@ -2308,6 +2308,77 @@ button { font-family: inherit; cursor: pointer; }
 .mini-stat-value.streak-win   { color: #4ade80; }
 .mini-stat-value.streak-loss  { color: #f87171; }
 
+/* ── Mini widget body (wraps rank + stats rows; needed for flash overlay) ── */
+
+#mini-body {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 14px 14px;
+}
+
+/* ── Capture flash overlay ─────────────────────────────────────────────────── */
+
+#mini-flash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 14px 14px;
+  opacity: 0;
+  transform: scale(0.88);
+  pointer-events: none;
+  transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#mini-flash.flash-active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+#mini-flash.flash-win  { background: rgba(22, 163, 74, 0.96); }
+#mini-flash.flash-loss { background: rgba(220, 38, 38, 0.96); }
+
+#mini-flash-mmr {
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+  line-height: 1;
+  text-align: center;
+}
+
+/* ── Capture status: amber warning (offline during active session) ──────────── */
+
+.capture-status-warning {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warn);
+}
+.capture-status-warning::before {
+  background: var(--warn);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── Capture status: hint (username not set yet) ───────────────────────────── */
+
+.capture-status-hint {
+  background: rgba(217, 119, 6, 0.08);
+  color: var(--warn);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.capture-status-hint::before {
+  display: none;
+}
+
 /* =============================================
    SESSION HOVER CHART POPUP
 ============================================= */

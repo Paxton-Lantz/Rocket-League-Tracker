@@ -601,25 +601,31 @@
       <span id="mini-title">RL Tracker</span>
       <button id="mini-restore-btn" title="Restore full view">⤢</button>
     </div>
-    <div id="mini-rank-row">
-      <img id="mini-rank-icon" src="" alt="" />
-      <div>
-        <div id="mini-rank-name">—</div>
-        <div id="mini-mmr">—</div>
+    <div id="mini-body">
+      <div id="mini-rank-row">
+        <img id="mini-rank-icon" src="" alt="" />
+        <div>
+          <div id="mini-rank-name">—</div>
+          <div id="mini-mmr">—</div>
+        </div>
       </div>
-    </div>
-    <div id="mini-stats-row">
-      <div class="mini-stat">
-        <span class="mini-stat-label">Record</span>
-        <span class="mini-stat-value" id="mini-record">—</span>
+      <div id="mini-stats-row">
+        <div class="mini-stat">
+          <span class="mini-stat-label">Record</span>
+          <span class="mini-stat-value" id="mini-record">—</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Net</span>
+          <span class="mini-stat-value" id="mini-session-net">—</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Streak</span>
+          <span class="mini-stat-value" id="mini-streak">—</span>
+        </div>
       </div>
-      <div class="mini-stat">
-        <span class="mini-stat-label">Net</span>
-        <span class="mini-stat-value" id="mini-session-net">—</span>
-      </div>
-      <div class="mini-stat">
-        <span class="mini-stat-label">Streak</span>
-        <span class="mini-stat-value" id="mini-streak">—</span>
+      <!-- Capture flash: big MMR change overlay, auto-dismisses after 3s -->
+      <div id="mini-flash" aria-hidden="true">
+        <div id="mini-flash-mmr"></div>
       </div>
     </div>
   </div>
