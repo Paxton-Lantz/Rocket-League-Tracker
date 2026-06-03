@@ -1179,6 +1179,65 @@ function endSession() {
   showStartSessionUI();
 }
 
+// Shows the session recap modal so the user can review stats before ending.
+// The actual endSession() is called only when they confirm.
+function showSessionRecap() {
+  if (!activeSession) return;
+
+  var sessionGames = games.filter(function(g) { return g.sessionId === activeSession.sessionId; });
+  var wins   = sessionGames.filter(function(g) { return g.result === "W"; }).length;
+  var losses = sessionGames.filter(function(g) { return g.result === "L"; }).length;
+  var net    = getCurrentSessionNet();
+
+  document.getElementById("recap-record").textContent = wins + "W · " + losses + "L";
+
+  var netEl = document.getElementById("recap-net");
+  netEl.textContent = (net >= 0 ? "+" : "") + net;
+  netEl.className   = "recap-stat-value " + (net > 0 ? "net-positive" : net < 0 ? "net-negative" : "");
+
+  document.getElementById("recap-games").textContent = sessionGames.length;
+
+  var modal = document.getElementById("session-recap-modal");
+  modal.classList.add("visible");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+// Checks on page load whether the active session has been idle for 4+ hours.
+// If so, auto-ends it and shows a brief notice.
+function checkStaleSession() {
+  if (!activeSession) return;
+
+  var sessionGames = games.filter(function(g) { return g.sessionId === activeSession.sessionId; });
+  var lastActivity = sessionGames.length > 0
+    ? Math.max.apply(null, sessionGames.map(function(g) { return g.id; }))
+    : activeSession.sessionId;
+
+  var fourHoursMs = 4 * 60 * 60 * 1000;
+  if (Date.now() - lastActivity < fourHoursMs) return;
+
+  if (sessionGames.length > 0) {
+    endSession(); // saves the session record with whatever was logged
+  } else {
+    clearActiveSession();
+    activeSession = null;
+  }
+
+  var staleEl = document.getElementById("stale-notice");
+  var textEl  = document.getElementById("stale-notice-text");
+  if (staleEl && textEl) {
+    textEl.textContent = "Your previous session was automatically ended (inactive for 4+ hours).";
+    staleEl.classList.add("visible");
+  }
+}
+
+// Shows/hides the first-time welcome banner based on whether any games exist.
+function updateWelcomeBanner() {
+  var banner = document.getElementById("welcome-banner");
+  if (!banner) return;
+  var hasData = games.length > 0 || sessions.length > 0;
+  banner.classList.toggle("visible", !hasData);
+}
+
 // Shows the "Start Session" card and hides the log form.
 // If there's an active session in another mode, disables the start button.
 function showStartSessionUI() {
@@ -1202,9 +1261,14 @@ function showStartSessionUI() {
 function showActiveSessionUI() {
   document.getElementById("start-session-card").style.display = "none";
   document.getElementById("log-section").style.display        = "block";
-  // Focus the MMR change field so the user can start typing immediately
   document.getElementById("mmr-change-input").focus();
   startCapturePolling();
+
+  // Show the widget hint once — the first time any session is started
+  if (!localStorage.getItem("rl_widget_hint_shown")) {
+    var hint = document.getElementById("widget-hint-banner");
+    if (hint) hint.classList.add("visible");
+  }
 }
 
 
@@ -2387,6 +2451,7 @@ function handleDelete(gameId) {
 
   saveGames();
   updateSummaryBar();
+  updateWelcomeBanner();
   updateStreak();
   updateTiltWarning();
   updateInSessionChart();
@@ -2974,6 +3039,7 @@ function handleFormSubmit(e) {
   gamesLoggedSinceLastAlert++;
 
   updateSummaryBar();
+  updateWelcomeBanner();
   updateStreak();
   updateTiltWarning();
   updateSessionHeader();
@@ -3350,7 +3416,27 @@ function init() {
     if (!isNaN(val)) highlightStripRank(getRankFromMMR(val));
   });
 
-  document.getElementById("end-session-btn").addEventListener("click", endSession);
+  document.getElementById("end-session-btn").addEventListener("click", showSessionRecap);
+
+  // Recap modal buttons
+  document.getElementById("recap-confirm-btn").addEventListener("click", function() {
+    document.getElementById("session-recap-modal").classList.remove("visible");
+    endSession();
+  });
+  document.getElementById("recap-cancel-btn").addEventListener("click", function() {
+    document.getElementById("session-recap-modal").classList.remove("visible");
+  });
+
+  // Stale session notice dismiss
+  document.getElementById("stale-notice-dismiss").addEventListener("click", function() {
+    document.getElementById("stale-notice").classList.remove("visible");
+  });
+
+  // Widget hint dismiss — mark as shown so it never appears again
+  document.getElementById("widget-hint-dismiss").addEventListener("click", function() {
+    document.getElementById("widget-hint-banner").classList.remove("visible");
+    localStorage.setItem("rl_widget_hint_shown", "1");
+  });
   document.getElementById("tilt-dismiss-btn").addEventListener("click", function() {
     tiltDismissed = true;
     document.getElementById("tilt-warning").style.display = "none";
@@ -3396,6 +3482,9 @@ function init() {
   // Wire up mode tabs
   initModeTabs();
 
+  // Auto-end any session that's been idle for 4+ hours
+  checkStaleSession();
+
   // Show the correct UI based on whether a session is already in progress
   if (activeSession) {
     showActiveSessionUI();
@@ -3409,6 +3498,9 @@ function init() {
       updateStartRankDisplay(lastMmr);
     }
   }
+
+  // Show first-time welcome banner if no data exists yet
+  updateWelcomeBanner();
 
   // Build both charts, then apply the current accent color
   buildInSessionChart();

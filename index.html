@@ -82,6 +82,18 @@
 
     <div id="tracker-view">
 
+    <!-- First-time widget hint: shown once when a session starts for the first time -->
+    <div id="widget-hint-banner">
+      Playing in-game? The <strong>⊟</strong> button (top-right) shrinks the tracker to a small floating widget you can keep on screen while you play.
+      <button id="widget-hint-dismiss" aria-label="Dismiss">×</button>
+    </div>
+
+    <!-- Stale session notice: shown when a session is auto-ended due to inactivity -->
+    <div id="stale-notice">
+      <span id="stale-notice-text"></span>
+      <button id="stale-notice-dismiss" aria-label="Dismiss">×</button>
+    </div>
+
     <!-- =============================================
          SUMMARY BAR
          Always visible at the top. Updates after every game.
@@ -115,6 +127,28 @@
       <button class="mode-tab" data-mode="2v2">2v2</button>
       <button class="mode-tab active" data-mode="3v3">3v3</button>
       <button class="mode-tab" data-mode="2v2 Heatseeker">Heatseeker</button>
+    </div>
+
+    <!-- First-time welcome banner: visible until first game is logged -->
+    <div id="welcome-banner">
+      <div id="welcome-intro">
+        <div id="welcome-title">Welcome to RL Tracker</div>
+        <div id="welcome-sub">Log your first session in three steps.</div>
+      </div>
+      <div id="welcome-steps">
+        <div class="welcome-step">
+          <div class="welcome-step-num">1</div>
+          <div class="welcome-step-text">Enter your current MMR below and click <strong>Start Session</strong></div>
+        </div>
+        <div class="welcome-step">
+          <div class="welcome-step-num">2</div>
+          <div class="welcome-step-text">Play a game, then fill in the form and click <strong>Log Game</strong></div>
+        </div>
+        <div class="welcome-step">
+          <div class="welcome-step-num">3</div>
+          <div class="welcome-step-text">Your rank, stats, and coaching tips appear here automatically</div>
+        </div>
+      </div>
     </div>
 
     <!-- =============================================
@@ -581,6 +615,31 @@
       </div>
 
     </div><!-- end #setup-view -->
+
+    <!-- Session recap modal: shown when End Session is clicked -->
+    <div id="session-recap-modal" aria-hidden="true">
+      <div id="session-recap-card">
+        <div id="session-recap-title">Session Complete</div>
+        <div id="session-recap-stats">
+          <div class="recap-stat">
+            <div class="recap-stat-value" id="recap-record">—</div>
+            <div class="recap-stat-label">Record</div>
+          </div>
+          <div class="recap-stat">
+            <div class="recap-stat-value" id="recap-net">—</div>
+            <div class="recap-stat-label">MMR</div>
+          </div>
+          <div class="recap-stat">
+            <div class="recap-stat-value" id="recap-games">—</div>
+            <div class="recap-stat-label">Games</div>
+          </div>
+        </div>
+        <div id="session-recap-actions">
+          <button id="recap-confirm-btn">End Session</button>
+          <button id="recap-cancel-btn">Keep Playing</button>
+        </div>
+      </div>
+    </div>
 
   </div><!-- end #app -->
 
