@@ -3024,8 +3024,8 @@ function initMainNav() {
       btn.classList.add("active");
 
       var view = btn.dataset.view;
-      document.getElementById("tracker-view").style.display = view === "tracker" ? "" : "none";
-      document.getElementById("setup-view").style.display   = view === "setup"   ? "" : "none";
+      document.getElementById("tracker-view").style.display = view === "tracker" ? "block" : "none";
+      document.getElementById("setup-view").style.display   = view === "setup"   ? "block" : "none";
     });
   });
 }
