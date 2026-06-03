@@ -103,6 +103,7 @@ _latest = {
     "shots":     0,
     "mvp":       False,
     "mmr_delta": 0,
+    "opp_mmr":   None,
 }
 
 # ── Screen capture ────────────────────────────────────────────────────────────
@@ -200,6 +201,38 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
     candidates.sort(key=lambda c: c[0])
     return candidates[0][1]
 
+# ── Opponent MMR ─────────────────────────────────────────────────────────────
+
+def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
+    """
+    Find the highest MMR among opponents on the scoreboard.
+
+    Current MMR values (e.g. 762, 781) appear as unsigned 3-4 digit integers
+    in the left ~45% of the screen, one per player row. The signed delta (+9)
+    is filtered out because it contains '+'/'-' and fails isdigit().
+
+    Strategy: collect all plausible MMR values that are NOT in the user's row,
+    then return the maximum (the toughest opponent's MMR).
+    """
+    left_boundary = img_width * 0.45
+    candidates = []
+
+    for i, word in enumerate(words["text"]):
+        if not word or not word.isdigit():
+            continue
+        val = int(word)
+        if val < 100 or val > 3000:   # outside any reasonable MMR range
+            continue
+        wx = words["left"][i] + words["width"][i] // 2
+        wy = words["top"][i] + words["height"][i] // 2
+        if wx > left_boundary:         # right side of screen = scores, not MMR
+            continue
+        if abs(wy - player_row_y) <= v_tol:  # skip user's own row
+            continue
+        candidates.append(val)
+
+    return max(candidates) if candidates else None
+
 # ── MVP detection ─────────────────────────────────────────────────────────────
 
 def detect_mvp(img_rgb, row_y, username_x):
@@ -241,6 +274,7 @@ def extract_stats(img_pil, words, username):
         "shots":     stats["shots"],
         "mmr_delta": find_mmr_delta(words, row_y, username_x),
         "mvp":       detect_mvp(img_pil, row_y, username_x),
+        "opp_mmr":   find_opponent_mmr(words, row_y, img_pil.width),
     }
 
 # ── Poll loop ─────────────────────────────────────────────────────────────────

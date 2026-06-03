@@ -1327,6 +1327,7 @@ function applyCapture(data) {
   document.getElementById("saves-input").value       = data.saves;
   document.getElementById("shots-input").value       = data.shots;
   document.getElementById("mvp-checkbox").checked    = data.mvp;
+  if (data.opp_mmr) document.getElementById("opp-mmr-input").value = data.opp_mmr;
 
   // Focus the MMR field so the user can review and hit Enter immediately
   var mmrInput = document.getElementById("mmr-change-input");
