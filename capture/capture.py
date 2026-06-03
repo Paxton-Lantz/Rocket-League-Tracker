@@ -92,6 +92,11 @@ def set_username(name):
     with _username_lock:
         _username = name.lower().strip()
 
+# ── Daemon health state ───────────────────────────────────────────────────────
+
+_startup_time  = time.time()
+_tesseract_ok  = False   # set True after first successful OCR call
+
 # ── Shared capture result ─────────────────────────────────────────────────────
 
 _latest_lock = threading.Lock()
@@ -296,9 +301,63 @@ def extract_stats(img_pil, words, username):
         "opp_mmr":   find_opponent_mmr(words, row_y, img_pil.width),
     }
 
+# ── Monitor auto-detection ───────────────────────────────────────────────────
+# Finds the Rocket League window using the Windows API (ctypes, stdlib-only)
+# and returns which monitor (1-indexed) it's on. Called once at startup.
+
+def detect_rl_monitor():
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes, ctypes.wintypes
+
+        found = []
+
+        @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM)
+        def _cb(hwnd, _):
+            n = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+            if n:
+                buf = ctypes.create_unicode_buffer(n + 1)
+                ctypes.windll.user32.GetWindowTextW(hwnd, buf, n + 1)
+                if "Rocket League" in buf.value:
+                    found.append(hwnd)
+            return True
+
+        ctypes.windll.user32.EnumWindows(_cb, 0)
+        if not found:
+            return None
+
+        rect = ctypes.wintypes.RECT()
+        ctypes.windll.user32.GetWindowRect(found[0], ctypes.byref(rect))
+        cx = (rect.left + rect.right)  // 2
+        cy = (rect.top  + rect.bottom) // 2
+
+        with mss.mss() as sct:
+            for idx, m in enumerate(sct.monitors[1:], start=1):
+                if m["left"] <= cx < m["left"] + m["width"] and \
+                   m["top"]  <= cy < m["top"]  + m["height"]:
+                    return idx
+    except Exception as e:
+        log(f"Monitor auto-detect: {e}")
+    return None
+
+
+# ── Tesseract health check ────────────────────────────────────────────────────
+
+def check_tesseract():
+    global _tesseract_ok
+    try:
+        pytesseract.image_to_string(Image.new("L", (4, 4), 255))
+        _tesseract_ok = True
+        log("Tesseract: OK")
+    except Exception as e:
+        _tesseract_ok = False
+        log(f"Tesseract: FAILED — {e}")
+
 # ── Poll loop ─────────────────────────────────────────────────────────────────
 
 def poll_loop():
+    global _tesseract_ok
     log("RL Capture started. Watching for end screens...")
 
     end_screen_showing = False
@@ -321,6 +380,7 @@ def poll_loop():
 
             proc  = preprocess(img)
             words = run_ocr(proc)
+            _tesseract_ok = True  # OCR ran without crashing — Tesseract is working
 
             if is_end_screen(words):
                 if not end_screen_showing:
@@ -353,20 +413,32 @@ def poll_loop():
 class CaptureHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
-
-        if parsed.path != "/latest":
-            self.send_response(404)
-            self.end_headers()
-            return
-
-        # Accept username from the tracker browser so users never edit a config file
         params = parse_qs(parsed.query)
+
+        # Both endpoints accept ?username= so the tracker can register it from either call
         if "username" in params:
             set_username(params["username"][0])
 
-        with _latest_lock:
-            payload = json.dumps(_latest).encode()
+        if parsed.path == "/latest":
+            with _latest_lock:
+                payload = json.dumps(_latest).encode()
+            self._json(payload)
 
+        elif parsed.path == "/status":
+            payload = json.dumps({
+                "ok":              True,
+                "username":        get_username(),
+                "tesseract_ok":    _tesseract_ok,
+                "monitor":         MONITOR,
+                "uptime_seconds":  int(time.time() - _startup_time),
+            }).encode()
+            self._json(payload)
+
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def _json(self, payload):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -374,7 +446,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, format, *args):
-        pass  # suppress per-request noise
+        pass
 
 
 def start_http_server():
@@ -444,6 +516,17 @@ def run_tray():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Auto-detect which monitor Rocket League is on (overrides config if found)
+    detected = detect_rl_monitor()
+    if detected:
+        MONITOR = detected
+        log(f"Rocket League detected on monitor {detected}")
+    else:
+        log(f"Using monitor {MONITOR} (Rocket League window not found — start RL first if capture misses)")
+
+    # Verify Tesseract is accessible before anyone connects
+    check_tesseract()
+
     register_startup()
     start_http_server()
 

@@ -662,7 +662,11 @@
             <div class="session-step-num">1</div>
             <div class="session-step-body">
               <strong>Download and run rl-capture.exe</strong>
-              <p>Download it from the GitHub Releases page. Double-click it. A small icon appears in your system tray (bottom-right of your taskbar). It starts automatically every time Windows boots — you never have to think about it again.</p>
+              <p>Double-click it. A small icon appears in your system tray. It starts automatically every time Windows boots — you never have to think about it again.</p>
+              <div class="setup-download-row">
+                <a href="https://github.com/Paxton-Lantz/Rocket-League-Tracker/releases/latest" target="_blank" rel="noopener" class="setup-dl-btn setup-dl-primary">⬇ Download rl-capture.exe</a>
+                <button onclick="downloadConfigJson()" class="setup-dl-btn setup-dl-secondary">⬇ config.json <span class="setup-dl-note">(2nd monitor only)</span></button>
+              </div>
             </div>
           </div>
           <div class="session-step-connector"></div>
@@ -706,7 +710,7 @@
           </div>
           <div class="trouble-row">
             <div class="trouble-symptom">Rocket League is on a second monitor</div>
-            <div class="trouble-fix">Create a <code>config.json</code> file next to rl-capture.exe with the contents: <code>{"monitor": 2}</code></div>
+            <div class="trouble-fix">Make sure Rocket League is open when you launch rl-capture.exe — it auto-detects the right monitor. If that doesn't work, download <button onclick="downloadConfigJson()" class="trouble-dl-btn">config.json</button> and place it next to the exe.</div>
           </div>
         </div>
       </div>

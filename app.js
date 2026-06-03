@@ -967,6 +967,18 @@ let lastCaptureTimestamp   = 0;
 let lastCaptureWallTime    = 0;   // Date.now() of the last successful capture
 let capturePollingInterval = null;
 
+// Downloads a default config.json for multi-monitor users.
+function downloadConfigJson() {
+  var blob = new Blob([JSON.stringify({"monitor": 2}, null, 2)], {type: "application/json"});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement("a");
+  a.href = url; a.download = "config.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 // Returns the stored Epic username, or empty string if not set.
 function getCaptureUsername() {
   return localStorage.getItem("rl_capture_username") || "";
@@ -1371,9 +1383,16 @@ function showMiniFlash(mmrDelta) {
 
 // Update the small status pill shown above the log form.
 // "connected" state shows time-relative text based on lastCaptureWallTime.
-function updateCaptureStatus(state) {
+// Pass labelOverride to display a specific message instead of the computed one.
+function updateCaptureStatus(state, labelOverride) {
   var el = document.getElementById("capture-status");
   if (!el) return;
+
+  if (labelOverride !== undefined) {
+    el.className   = "capture-status capture-status-" + state;
+    el.textContent = labelOverride;
+    return;
+  }
 
   var label    = "";
   var cssState = state;
@@ -1413,14 +1432,25 @@ function updateCaptureStatus(state) {
 }
 
 // One-shot connection test — used by the "Test" button.
+// Hits /status so we can show exactly what the daemon is doing.
 function testCaptureConnection() {
   var username = getCaptureUsername();
-  var url      = "http://localhost:" + CAPTURE_PORT + "/latest"
+  var url      = "http://localhost:" + CAPTURE_PORT + "/status"
                + (username ? "?username=" + encodeURIComponent(username) : "");
   fetch(url)
     .then(function(r) { return r.json(); })
-    .then(function() { updateCaptureStatus("connected"); })
-    .catch(function() { updateCaptureStatus("disconnected"); });
+    .then(function(data) {
+      if (!data.tesseract_ok) {
+        updateCaptureStatus("disconnected", "OCR engine failed — see rl-capture.log");
+      } else if (data.username) {
+        updateCaptureStatus("connected", "Connected · Watching for: " + data.username);
+      } else {
+        updateCaptureStatus("connected"); // will show username hint if field is empty
+      }
+    })
+    .catch(function() {
+      updateCaptureStatus(activeSession ? "warning" : "disconnected");
+    });
 }
 
 

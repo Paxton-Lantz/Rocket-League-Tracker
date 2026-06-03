@@ -2570,6 +2570,71 @@ button { font-family: inherit; cursor: pointer; }
   animation: capture-flash 1s ease-out;
 }
 
+/* ── Setup guide download buttons ──────────────────────────────────────────── */
+
+.setup-download-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.setup-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  border: none;
+}
+
+.setup-dl-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+.setup-dl-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.setup-dl-secondary {
+  background: var(--surface);
+  color: var(--text-2);
+  border: 1.5px solid var(--border-strong);
+}
+
+.setup-dl-secondary:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.setup-dl-note {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.trouble-dl-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ── Scoreboard diagram (Setup Guide) ──────────────────────────────────────── */
 
 .sb-diagram {
