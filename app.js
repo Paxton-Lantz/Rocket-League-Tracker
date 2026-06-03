@@ -17,7 +17,7 @@
 //
 // Without a key, coaching alerts still work using built-in tips.
 // ============================================================
-const CLAUDE_API_KEY = "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";
+const CLAUDE_API_KEY = ""; // Paste your key here (https://console.anthropic.com). Leave blank to use built-in tips.
 
 
 // ============================================================
