@@ -34,6 +34,22 @@ if exist "%TESS_PATH%" (
     exit /b 1
 )
 
+:: ── Monitor detection ───────────────────────────────────────────────────────
+echo.
+echo [3/3] Detecting monitors...
+for /f %%i in ('powershell -nologo -noprofile -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::AllScreens.Count"') do set MONITOR_COUNT=%%i
+
+if "%MONITOR_COUNT%"=="" set MONITOR_COUNT=1
+
+if %MONITOR_COUNT% GTR 1 (
+    echo Found %MONITOR_COUNT% monitors.
+    set /p "MON_NUM=Which monitor does Rocket League run on? [1-%MONITOR_COUNT%]: "
+    powershell -nologo -noprofile -command "(Get-Content config.json -Raw) -replace '\"monitor\"\s*:\s*\d+', '\"monitor\": %MON_NUM%' | Set-Content config.json -NoNewline"
+    echo config.json updated: monitor = %MON_NUM%
+) else (
+    echo Single monitor detected — no change needed.
+)
+
 echo.
 echo ================================================
 echo  Setup complete!

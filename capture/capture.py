@@ -12,6 +12,7 @@ then run start.bat before each session.
 """
 
 import json
+import os
 import re
 import sys
 import threading
@@ -26,9 +27,26 @@ import pytesseract
 from PIL import Image, ImageEnhance
 from pytesseract import Output
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Path resolution (PyInstaller bundle vs. normal run) ──────────────────────
+# When bundled with PyInstaller --onefile, sys.frozen is True.
+# sys._MEIPASS is the temp dir where bundled files are extracted at runtime.
+# sys.executable is the .exe file itself — config.json should live next to it.
+#
+# When running normally (python capture.py), both paths are script-relative.
 
-CONFIG_PATH = Path(__file__).parent / "config.json"
+if getattr(sys, "frozen", False):
+    _bundle_dir = sys._MEIPASS
+    _exe_dir    = os.path.dirname(sys.executable)
+    # Point pytesseract at the Tesseract binary bundled inside the exe
+    pytesseract.pytesseract.tesseract_cmd = os.path.join(_bundle_dir, "tesseract", "tesseract.exe")
+    # Tell Tesseract where the language data lives inside the bundle
+    os.environ["TESSDATA_PREFIX"] = os.path.join(_bundle_dir, "tessdata")
+    CONFIG_PATH = Path(_exe_dir) / "config.json"
+else:
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    CONFIG_PATH = Path(__file__).parent / "config.json"
+
+# ── Config ────────────────────────────────────────────────────────────────────
 
 def load_config():
     try:

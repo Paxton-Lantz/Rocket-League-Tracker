@@ -1751,6 +1751,365 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: 0 2px 10px var(--accent-glow);
 }
 
+/* ── Main nav (Tracker / Setup Guide tabs) ─────────────────────────────────── */
+
+#main-nav {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+}
+
+.main-tab {
+  padding: 7px 20px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.main-tab:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.main-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+/* ── Setup view ─────────────────────────────────────────────────────────────── */
+
+#setup-view {
+  display: none;
+  max-width: 860px;
+}
+
+.setup-section {
+  margin-bottom: 48px;
+}
+
+.setup-heading {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.setup-subhead {
+  font-size: 0.88rem;
+  color: var(--text-2);
+  margin: 0 0 24px;
+  line-height: 1.6;
+  max-width: 640px;
+}
+
+/* ── Flow diagram ───────────────────────────────────────────────────────────── */
+
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 80px;
+}
+
+.flow-step-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: grayscale(0.15);
+}
+
+.flow-step-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.flow-arrow {
+  font-size: 1.2rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ── Setup paths (two-column cards) ────────────────────────────────────────── */
+
+.setup-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .setup-paths { grid-template-columns: 1fr; }
+}
+
+.setup-path {
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.setup-path-recommended {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim), var(--shadow-sm);
+}
+
+.setup-path-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-radius: 99px;
+  padding: 2px 9px;
+  margin-bottom: 10px;
+}
+
+.setup-path-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.setup-path-desc {
+  font-size: 0.80rem;
+  color: var(--text-2);
+  margin: 0 0 14px;
+}
+
+.setup-steps {
+  padding-left: 18px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setup-steps li {
+  font-size: 0.83rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.setup-steps code {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.78rem;
+  background: rgba(37, 99, 235, 0.07);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── Config reference ───────────────────────────────────────────────────────── */
+
+.setup-config-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: start;
+  padding: 20px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 640px) {
+  .setup-config-grid { grid-template-columns: 1fr; }
+}
+
+.setup-config-block {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: var(--text);
+  background: rgba(0, 20, 80, 0.04);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin: 0;
+  white-space: pre;
+  align-self: start;
+}
+
+.setup-config-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.setup-config-key {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.80rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 7px;
+  border-radius: 4px;
+  align-self: start;
+}
+
+.setup-config-desc {
+  font-size: 0.80rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.setup-config-desc code {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.76rem;
+  background: rgba(37, 99, 235, 0.07);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── Session steps ──────────────────────────────────────────────────────────── */
+
+.setup-session-steps {
+  display: flex;
+  flex-direction: column;
+}
+
+.session-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 18px 22px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.session-step-connector {
+  width: 2px;
+  height: 12px;
+  background: var(--border-strong);
+  margin-left: 30px;
+  flex-shrink: 0;
+}
+
+.session-step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.session-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-step-body strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.session-step-body p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+/* ── Troubleshooting ────────────────────────────────────────────────────────── */
+
+.setup-trouble {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.trouble-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 0;
+}
+
+.trouble-row + .trouble-row {
+  border-top: 1px solid var(--border);
+}
+
+.trouble-symptom {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--warn);
+  background: var(--warn-bg);
+  padding: 14px 18px;
+  border-right: 1px solid var(--border);
+}
+
+.trouble-fix {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  background: var(--surface);
+  padding: 14px 18px;
+  line-height: 1.5;
+}
+
+.trouble-fix code {
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.76rem;
+  background: rgba(37, 99, 235, 0.07);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
 #active-mode-notice {
   display: none;
   font-size: 0.82rem;
@@ -1977,6 +2336,13 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ── Capture daemon status pill ────────────────────────────────────────────── */
 
+#capture-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .capture-status {
   display: inline-flex;
   align-items: center;
@@ -1987,7 +2353,25 @@ button { font-family: inherit; cursor: pointer; }
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 99px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
+}
+
+.capture-test-btn {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.capture-test-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text, #e2e8f0);
 }
 
 .capture-status::before {

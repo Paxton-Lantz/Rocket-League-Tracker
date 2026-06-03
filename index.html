@@ -74,6 +74,14 @@
       <button id="minimize-btn" title="Minimize to widget">⊟</button>
     </header>
 
+    <!-- Main navigation: switches between the Tracker and the Setup Guide -->
+    <nav id="main-nav">
+      <button class="main-tab active" data-view="tracker">Tracker</button>
+      <button class="main-tab" data-view="setup">Setup Guide</button>
+    </nav>
+
+    <div id="tracker-view">
+
     <!-- =============================================
          SUMMARY BAR
          Always visible at the top. Updates after every game.
@@ -247,7 +255,10 @@
         </div>
       </div>
 
-      <div id="capture-status" class="capture-status capture-status-idle"></div>
+      <div id="capture-row">
+        <div id="capture-status" class="capture-status capture-status-idle"></div>
+        <button id="capture-test-btn" class="capture-test-btn" title="Check if capture daemon is running">Test connection</button>
+      </div>
 
       <h2>Log a Game</h2>
 
@@ -465,6 +476,164 @@
       <div id="concept-grid"></div>
     </section>
 
+    </div><!-- end #tracker-view -->
+
+    <!-- =============================================
+         SETUP GUIDE
+         Hidden by default. Shown when the user clicks
+         the "Setup Guide" tab in the main nav.
+    ============================================= -->
+    <div id="setup-view">
+
+      <!-- ── How it works ──────────────────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">How It Works</h2>
+        <p class="setup-subhead">The capture daemon watches your screen in the background. When a game ends it reads your stats off the scoreboard and pre-fills the log form. You just review and hit Enter.</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">🎮</div>
+            <div class="flow-step-label">Game ends</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📊</div>
+            <div class="flow-step-label">Scoreboard appears</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">👁</div>
+            <div class="flow-step-label">Daemon reads it</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">✏️</div>
+            <div class="flow-step-label">Form pre-fills</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">✅</div>
+            <div class="flow-step-label">You submit</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── One-time setup ────────────────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">One-Time Setup</h2>
+
+        <div class="setup-paths">
+
+          <div class="setup-path setup-path-recommended">
+            <div class="setup-path-badge">Recommended</div>
+            <h3 class="setup-path-title">Using rl-capture.exe</h3>
+            <p class="setup-path-desc">No Python, no Tesseract — just two files.</p>
+            <ol class="setup-steps">
+              <li>Download <code>rl-capture.exe</code> from the GitHub Releases page</li>
+              <li>Place <code>config.json</code> in the same folder as the exe</li>
+              <li>Open <code>config.json</code> and set <code>"username"</code> to your Epic display name</li>
+              <li>Double-click <code>rl-capture.exe</code> — leave the window open while you play</li>
+            </ol>
+          </div>
+
+          <div class="setup-path">
+            <h3 class="setup-path-title">From source</h3>
+            <p class="setup-path-desc">For building the exe yourself or running the Python script directly.</p>
+            <ol class="setup-steps">
+              <li>Install Python 3 and Tesseract OCR (UB-Mannheim build)</li>
+              <li>Run <code>install.bat</code> — installs Python deps and detects your monitors</li>
+              <li>Edit <code>config.json</code> with your username</li>
+              <li>Run <code>start.bat</code> before each session (or <code>build.bat</code> to create your own exe)</li>
+            </ol>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── config.json reference ─────────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">config.json</h2>
+        <div class="setup-config-grid">
+          <pre class="setup-config-block">{
+  "username": "YourEpicName",
+  "monitor":  1
+}</pre>
+          <div class="setup-config-fields">
+            <div class="setup-config-field">
+              <code class="setup-config-key">username</code>
+              <span class="setup-config-desc">Your Epic Games display name. Case-insensitive. Club tags optional.</span>
+            </div>
+            <div class="setup-config-field">
+              <code class="setup-config-key">monitor</code>
+              <span class="setup-config-desc"><code>1</code> = primary screen, <code>2</code> = secondary. <code>install.bat</code> sets this automatically if you have multiple monitors.</span>
+            </div>
+            <div class="setup-config-field">
+              <code class="setup-config-key">brightness_threshold</code>
+              <span class="setup-config-desc">Default <code>70</code>. Raise it if captures are missed; lower it if the daemon fires during active gameplay.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Every session ─────────────────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">Every Session</h2>
+        <div class="setup-session-steps">
+          <div class="session-step">
+            <div class="session-step-num">1</div>
+            <div class="session-step-body">
+              <strong>Run rl-capture.exe</strong>
+              <p>Leave the terminal window open. Use the <em>Test connection</em> button above the log form to confirm it's running.</p>
+            </div>
+          </div>
+          <div class="session-step-connector"></div>
+          <div class="session-step">
+            <div class="session-step-num">2</div>
+            <div class="session-step-body">
+              <strong>Start a session</strong>
+              <p>Click "Start Session" and enter your current MMR. The status pill turns green once the daemon is detected.</p>
+            </div>
+          </div>
+          <div class="session-step-connector"></div>
+          <div class="session-step">
+            <div class="session-step-num">3</div>
+            <div class="session-step-body">
+              <strong>Play — stats fill automatically</strong>
+              <p>After each game, the form pre-fills within a second of the scoreboard appearing. Review and hit Enter to log it.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Troubleshooting ───────────────────────── -->
+      <div class="setup-section">
+        <h2 class="setup-heading">Troubleshooting</h2>
+        <div class="setup-trouble">
+          <div class="trouble-row">
+            <div class="trouble-symptom">Pill shows "Capture Offline"</div>
+            <div class="trouble-fix">rl-capture.exe isn't running. Start it and wait a second, then hit <em>Test connection</em>.</div>
+          </div>
+          <div class="trouble-row">
+            <div class="trouble-symptom">Daemon running but stats never fill</div>
+            <div class="trouble-fix">The brightness pre-check is blocking OCR. Try raising <code>brightness_threshold</code> in config.json (default 70 — try 85 or 100).</div>
+          </div>
+          <div class="trouble-row">
+            <div class="trouble-symptom">OCR fires during active gameplay</div>
+            <div class="trouble-fix">Lower <code>brightness_threshold</code> (try 50 or 40). The end screen is darker than normal gameplay.</div>
+          </div>
+          <div class="trouble-row">
+            <div class="trouble-symptom">Stats fill but username not found</div>
+            <div class="trouble-fix">Check spelling in config.json. The daemon does a case-insensitive substring match — try just your base name without a club tag.</div>
+          </div>
+          <div class="trouble-row">
+            <div class="trouble-symptom">Capturing from the wrong screen</div>
+            <div class="trouble-fix">Set <code>"monitor": 2</code> in config.json. Or run <code>install.bat</code> again — it will prompt you to choose.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end #setup-view -->
+
   </div><!-- end #app -->
 
   <!-- Dark backdrop — page dims so additive glow particles actually pop -->
@@ -493,7 +662,11 @@
     </div>
     <div id="mini-stats-row">
       <div class="mini-stat">
-        <span class="mini-stat-label">Session</span>
+        <span class="mini-stat-label">Record</span>
+        <span class="mini-stat-value" id="mini-record">—</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-stat-label">Net</span>
         <span class="mini-stat-value" id="mini-session-net">—</span>
       </div>
       <div class="mini-stat">

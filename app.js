@@ -964,6 +964,7 @@ let gamesLoggedSinceLastAlert = 0;
 
 // Capture daemon state
 let lastCaptureTimestamp  = 0;
+let lastCaptureWallTime   = 0;   // Date.now() of the last successful capture
 let capturePollingInterval = null;
 
 
@@ -1254,23 +1255,53 @@ function applyCapture(data) {
   form.classList.add("capture-flash");
   setTimeout(function() { form.classList.remove("capture-flash"); }, 1000);
 
-  updateCaptureStatus("captured");
+  lastCaptureWallTime = Date.now();
+  updateCaptureStatus("connected");
 }
 
 // Update the small status pill shown above the log form.
+// "connected" state shows time-relative text based on lastCaptureWallTime.
 function updateCaptureStatus(state) {
   var el = document.getElementById("capture-status");
   if (!el) return;
 
-  var labels = {
-    idle:         "",
-    connected:    "Capture Ready",
-    disconnected: "Capture Offline",
-    captured:     "Captured!",
-  };
+  var label    = "";
+  var cssState = state;
 
-  el.className   = "capture-status capture-status-" + state;
-  el.textContent = labels[state] || "";
+  if (state === "connected") {
+    if (lastCaptureWallTime) {
+      var secsAgo = Math.floor((Date.now() - lastCaptureWallTime) / 1000);
+      if (secsAgo < 8) {
+        label    = "Captured!";
+        cssState = "captured";
+      } else if (secsAgo < 60) {
+        label = "Captured " + secsAgo + "s ago";
+      } else {
+        label = "Captured " + Math.floor(secsAgo / 60) + "m ago";
+      }
+    } else {
+      label = "Capture Ready";
+    }
+  } else if (state === "disconnected") {
+    label = "Capture Offline";
+  }
+  // idle: label stays ""
+
+  el.className   = "capture-status capture-status-" + cssState;
+  el.textContent = label;
+}
+
+// One-shot connection test — used by the "Test connection" button.
+// Shows the result in the pill without requiring an active session.
+function testCaptureConnection() {
+  fetch("http://localhost:" + CAPTURE_PORT + "/latest")
+    .then(function(r) { return r.json(); })
+    .then(function() {
+      updateCaptureStatus("connected");
+    })
+    .catch(function() {
+      updateCaptureStatus("disconnected");
+    });
 }
 
 
@@ -2985,6 +3016,20 @@ function setActiveMode(mode) {
 }
 
 // Wires up the mode tab buttons.
+// Wires the Tracker / Setup Guide tabs in the main nav.
+function initMainNav() {
+  document.querySelectorAll(".main-tab").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".main-tab").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+
+      var view = btn.dataset.view;
+      document.getElementById("tracker-view").style.display = view === "tracker" ? "" : "none";
+      document.getElementById("setup-view").style.display   = view === "setup"   ? "" : "none";
+    });
+  });
+}
+
 function initModeTabs() {
   document.querySelectorAll(".mode-tab").forEach(function(btn) {
     btn.classList.toggle("active", btn.dataset.mode === activeMode);
@@ -3009,6 +3054,7 @@ function updateMiniWidget() {
   var rankNameEl = document.getElementById("mini-rank-name");
   var mmrEl      = document.getElementById("mini-mmr");
   var iconEl     = document.getElementById("mini-rank-icon");
+  var recordEl   = document.getElementById("mini-record");
   var netEl      = document.getElementById("mini-session-net");
   var streakEl   = document.getElementById("mini-streak");
   if (!rankNameEl) return;
@@ -3034,6 +3080,16 @@ function updateMiniWidget() {
     } else {
       iconEl.style.display = "none";
     }
+  }
+
+  // Session W/L record
+  if (activeSession) {
+    var sessionGames = games.filter(function(g) { return g.sessionId === activeSession.sessionId; });
+    var wins   = sessionGames.filter(function(g) { return g.result === "W"; }).length;
+    var losses = sessionGames.filter(function(g) { return g.result === "L"; }).length;
+    recordEl.textContent = wins + "W · " + losses + "L";
+  } else {
+    recordEl.textContent = "—";
   }
 
   // Session net
@@ -3248,11 +3304,18 @@ function init() {
   document.getElementById("coaching-dismiss-btn").addEventListener("click", dismissCoachingAlert);
   document.getElementById("log-form").addEventListener("submit", handleFormSubmit);
 
+  // Wire capture test button — works outside a session so users can verify the daemon is running
+  var captureTestBtn = document.getElementById("capture-test-btn");
+  if (captureTestBtn) captureTestBtn.addEventListener("click", testCaptureConnection);
+
   // Wire up keyboard shortcuts
   setupFormKeyboard();
 
   // Wire up mini mode (minimize button + drag)
   initMiniMode();
+
+  // Wire up main nav (Tracker / Setup Guide tabs)
+  initMainNav();
 
   // Wire up mode tabs
   initModeTabs();
