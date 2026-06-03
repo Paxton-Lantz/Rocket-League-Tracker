@@ -205,15 +205,17 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
 
 def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
     """
-    Find the average MMR of all opponents on the scoreboard.
+    Find the average MMR of the opponent team only — not including teammates.
 
-    Current MMR values appear as unsigned 3-4 digit integers in the left ~45%
-    of the screen. Readings are grouped by approximate row so each opponent
-    counts once even if OCR finds the number twice. The average across all
-    opponent rows is more representative of match difficulty than the max.
+    Strategy: collect one MMR value per player row (all players, both teams).
+    Sort rows by y position and find the largest vertical gap — that gap is
+    the visual separator between the two teams on the scoreboard. Split there,
+    identify which half contains the user's row, and average the other half.
+
+    This works at any resolution because it's gap-relative, not pixel-absolute.
     """
     left_boundary = img_width * 0.45
-    row_values = {}  # quantized y -> list of candidate MMR readings for that row
+    row_buckets = {}  # quantized y -> list of candidate readings
 
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
@@ -225,17 +227,30 @@ def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
         wy = words["top"][i] + words["height"][i] // 2
         if wx > left_boundary:
             continue
-        if abs(wy - player_row_y) <= v_tol:  # skip the user's own row
-            continue
         row_key = round(wy / (v_tol * 2)) * (v_tol * 2)
-        row_values.setdefault(row_key, []).append(val)
+        row_buckets.setdefault(row_key, []).append(val)
 
-    if not row_values:
+    if len(row_buckets) < 2:
         return None
 
-    # One MMR per opponent (best reading within each row), then average
-    per_player = [max(vals) for vals in row_values.values()]
-    return round(sum(per_player) / len(per_player))
+    # One MMR per row (best reading wins), sorted top-to-bottom
+    rows = sorted((ry, max(vals)) for ry, vals in row_buckets.items())
+
+    # The largest gap between consecutive rows is where the teams split
+    gaps      = [rows[i+1][0] - rows[i][0] for i in range(len(rows) - 1)]
+    split_idx = gaps.index(max(gaps))   # index of the last row in team A
+
+    team_a = rows[:split_idx + 1]
+    team_b = rows[split_idx + 1:]
+
+    # The user is in whichever team contains their row_y
+    user_in_a = any(abs(ry - player_row_y) <= v_tol * 2 for ry, _ in team_a)
+    opponents = team_b if user_in_a else team_a
+
+    if not opponents:
+        return None
+    mmrs = [mmr for _, mmr in opponents]
+    return round(sum(mmrs) / len(mmrs))
 
 # ── MVP detection ─────────────────────────────────────────────────────────────
 
