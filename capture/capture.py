@@ -205,33 +205,37 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
 
 def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
     """
-    Find the highest MMR among opponents on the scoreboard.
+    Find the average MMR of all opponents on the scoreboard.
 
-    Current MMR values (e.g. 762, 781) appear as unsigned 3-4 digit integers
-    in the left ~45% of the screen, one per player row. The signed delta (+9)
-    is filtered out because it contains '+'/'-' and fails isdigit().
-
-    Strategy: collect all plausible MMR values that are NOT in the user's row,
-    then return the maximum (the toughest opponent's MMR).
+    Current MMR values appear as unsigned 3-4 digit integers in the left ~45%
+    of the screen. Readings are grouped by approximate row so each opponent
+    counts once even if OCR finds the number twice. The average across all
+    opponent rows is more representative of match difficulty than the max.
     """
     left_boundary = img_width * 0.45
-    candidates = []
+    row_values = {}  # quantized y -> list of candidate MMR readings for that row
 
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
             continue
         val = int(word)
-        if val < 100 or val > 3000:   # outside any reasonable MMR range
+        if val < 100 or val > 3000:
             continue
         wx = words["left"][i] + words["width"][i] // 2
         wy = words["top"][i] + words["height"][i] // 2
-        if wx > left_boundary:         # right side of screen = scores, not MMR
+        if wx > left_boundary:
             continue
-        if abs(wy - player_row_y) <= v_tol:  # skip user's own row
+        if abs(wy - player_row_y) <= v_tol:  # skip the user's own row
             continue
-        candidates.append(val)
+        row_key = round(wy / (v_tol * 2)) * (v_tol * 2)
+        row_values.setdefault(row_key, []).append(val)
 
-    return max(candidates) if candidates else None
+    if not row_values:
+        return None
+
+    # One MMR per opponent (best reading within each row), then average
+    per_player = [max(vals) for vals in row_values.values()]
+    return round(sum(per_player) / len(per_player))
 
 # ── MVP detection ─────────────────────────────────────────────────────────────
 
