@@ -27,29 +27,34 @@ const CLAUDE_API_KEY = "sk-ant-api03-RnmcBvIU8ZUDfw6sS7wCiP6tAfV4px7TsUopingeGfP
 // Add more entries to RANK_ICONS as new art is sourced.
 // ============================================================
 
+// MMR thresholds calibrated from two confirmed data points:
+//   222 MMR = Bronze II Div 4  →  Bronze II ≈ 155, Bronze III ≈ 240
+//   521 MMR = Gold II Div 1    →  Gold II ≈ 510
+// Silver and above spaced ~55–60 MMR per rank; Champion+ slightly wider.
+// Thresholds shift each season and differ between playlists (1v1/2v2/3v3).
 const RANK_THRESHOLDS = [
-  { name: "Bronze I",          mmr: 0    },
-  { name: "Bronze II",         mmr: 130  },
-  { name: "Bronze III",        mmr: 220  },
-  { name: "Silver I",          mmr: 290  },
-  { name: "Silver II",         mmr: 350  },
-  { name: "Silver III",        mmr: 410  },
-  { name: "Gold I",            mmr: 470  },
-  { name: "Gold II",           mmr: 532  },
-  { name: "Gold III",          mmr: 592  },
-  { name: "Platinum I",        mmr: 652  },
-  { name: "Platinum II",       mmr: 712  },
-  { name: "Platinum III",      mmr: 772  },
-  { name: "Diamond I",         mmr: 832  },
-  { name: "Diamond II",        mmr: 892  },
-  { name: "Diamond III",       mmr: 952  },
-  { name: "Champion I",        mmr: 1012 },
-  { name: "Champion II",       mmr: 1092 },
-  { name: "Champion III",      mmr: 1172 },
-  { name: "Grand Champion I",  mmr: 1252 },
-  { name: "Grand Champion II", mmr: 1332 },
-  { name: "Grand Champion III",mmr: 1412 },
-  { name: "Supersonic Legend", mmr: 1492 }
+  { name: "Bronze I",           mmr: 0    },
+  { name: "Bronze II",          mmr: 155  },
+  { name: "Bronze III",         mmr: 240  },
+  { name: "Silver I",           mmr: 300  },
+  { name: "Silver II",          mmr: 360  },
+  { name: "Silver III",         mmr: 415  },
+  { name: "Gold I",             mmr: 460  },
+  { name: "Gold II",            mmr: 510  },
+  { name: "Gold III",           mmr: 570  },
+  { name: "Platinum I",         mmr: 630  },
+  { name: "Platinum II",        mmr: 690  },
+  { name: "Platinum III",       mmr: 750  },
+  { name: "Diamond I",          mmr: 810  },
+  { name: "Diamond II",         mmr: 870  },
+  { name: "Diamond III",        mmr: 930  },
+  { name: "Champion I",         mmr: 990  },
+  { name: "Champion II",        mmr: 1070 },
+  { name: "Champion III",       mmr: 1150 },
+  { name: "Grand Champion I",   mmr: 1230 },
+  { name: "Grand Champion II",  mmr: 1310 },
+  { name: "Grand Champion III", mmr: 1390 },
+  { name: "Supersonic Legend",  mmr: 1470 }
 ];
 
 // Map rank name → icon file path.
@@ -823,6 +828,10 @@ let tiltDismissed = false;
 let coachingAlertActive       = false;
 let gamesLoggedSinceLastAlert = 0;
 
+// Capture daemon state
+let lastCaptureTimestamp  = 0;
+let capturePollingInterval = null;
+
 
 // ============================================================
 // STORAGE — games
@@ -1030,6 +1039,7 @@ function endSession() {
 function showStartSessionUI() {
   document.getElementById("start-session-card").style.display = "block";
   document.getElementById("log-section").style.display        = "none";
+  stopCapturePolling();
 
   var notice   = document.getElementById("active-mode-notice");
   var startBtn = document.getElementById("start-session-btn");
@@ -1049,6 +1059,84 @@ function showActiveSessionUI() {
   document.getElementById("log-section").style.display        = "block";
   // Focus the MMR change field so the user can start typing immediately
   document.getElementById("mmr-change-input").focus();
+  startCapturePolling();
+}
+
+
+// ============================================================
+// CAPTURE DAEMON INTEGRATION
+// Polls localhost:7891/latest (the Python capture daemon) every 2
+// seconds while a session is active. When new data arrives, it
+// pre-fills the log form. The user still hits Enter to confirm.
+// ============================================================
+
+const CAPTURE_PORT = 7891;
+
+// Start polling — called automatically when a session begins.
+function startCapturePolling() {
+  if (capturePollingInterval) return; // already running
+  capturePollingInterval = setInterval(pollCapture, 2000);
+}
+
+// Stop polling — called automatically when a session ends.
+function stopCapturePolling() {
+  if (capturePollingInterval) {
+    clearInterval(capturePollingInterval);
+    capturePollingInterval = null;
+  }
+  updateCaptureStatus("idle");
+}
+
+// Fetch the latest capture result from the daemon.
+function pollCapture() {
+  fetch("http://localhost:" + CAPTURE_PORT + "/latest")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      updateCaptureStatus("connected");
+      // data.timestamp is 0 on startup — only act when a real capture has landed
+      if (data.timestamp && data.timestamp !== lastCaptureTimestamp) {
+        lastCaptureTimestamp = data.timestamp;
+        applyCapture(data);
+      }
+    })
+    .catch(function() {
+      // Daemon isn't running — silently show offline status
+      updateCaptureStatus("disconnected");
+    });
+}
+
+// Pre-fill the log form with captured stats.
+function applyCapture(data) {
+  var mmrSign = data.mmr_delta >= 0 ? "+" : "";
+  document.getElementById("mmr-change-input").value = mmrSign + data.mmr_delta;
+  document.getElementById("goals-input").value       = data.goals;
+  document.getElementById("assists-input").value     = data.assists;
+  document.getElementById("saves-input").value       = data.saves;
+  document.getElementById("shots-input").value       = data.shots;
+  document.getElementById("mvp-checkbox").checked    = data.mvp;
+
+  // Brief green flash on the form so the user knows data arrived
+  var form = document.getElementById("log-form");
+  form.classList.add("capture-flash");
+  setTimeout(function() { form.classList.remove("capture-flash"); }, 1000);
+
+  updateCaptureStatus("captured");
+}
+
+// Update the small status pill shown above the log form.
+function updateCaptureStatus(state) {
+  var el = document.getElementById("capture-status");
+  if (!el) return;
+
+  var labels = {
+    idle:         "",
+    connected:    "Capture Ready",
+    disconnected: "Capture Offline",
+    captured:     "Captured!",
+  };
+
+  el.className   = "capture-status capture-status-" + state;
+  el.textContent = labels[state] || "";
 }
 
 
@@ -1387,8 +1475,8 @@ function buildCoachingPrompt(pattern) {
     "- Win rate: " + Math.round((wins / total) * 100) + "%\n" +
     (currentMmr ? "- Current MMR: " + currentMmr + "\n" : "") +
     "- Avg goals: " + avg("goals") + "/game\n" +
-    "- Avg saves: " + avg("saves") + "/game\n" +
     "- Avg assists: " + avg("assists") + "/game\n" +
+    "- Avg saves: " + avg("saves") + "/game\n" +
     "- Avg shots: " + avg("shots") + "/game\n\n" +
     "Pattern detected: " + pattern.description + "\n\n" +
     "Write a coaching tip (2–3 sentences) specifically about \"" + conceptTitle + "\" " +
@@ -2038,7 +2126,7 @@ function updateGameLog() {
       var td = document.createElement("td");
       if (oppMmr == null) { td.textContent = "—"; return td; }
       td.textContent = oppMmr;
-      td.title       = getRankFromMMR(oppMmr);
+      td.title       = "Highest opp: " + getRankFromMMR(oppMmr);
       td.style.color = "var(--text-2)";
       return td;
     }
@@ -2049,8 +2137,8 @@ function updateGameLog() {
     row.appendChild(makeResultCell(game.result));
     row.appendChild(makeOppCell(game.opponentMmr != null ? game.opponentMmr : null));
     row.appendChild(makeCell(game.goals));
-    row.appendChild(makeCell(game.saves));
     row.appendChild(makeCell(game.assists));
+    row.appendChild(makeCell(game.saves));
     row.appendChild(makeCell(game.shots));
     row.appendChild(makeCell(game.mvp ? "Yes" : "No"));
 
@@ -2132,8 +2220,8 @@ function updateStatsDashboard() {
 
   var statKeys = [
     { id: "avg-goals",   key: "goals",   label: "Avg Goals"   },
-    { id: "avg-saves",   key: "saves",   label: "Avg Saves"   },
     { id: "avg-assists", key: "assists", label: "Avg Assists" },
+    { id: "avg-saves",   key: "saves",   label: "Avg Saves"   },
     { id: "avg-shots",   key: "shots",   label: "Avg Shots"   }
   ];
 
@@ -2516,8 +2604,8 @@ function updateSessionLog() {
     statsRow.appendChild(makeSessionStat("End MMR",     record.endMmr));
     statsRow.appendChild(makeSessionStat("Games",       record.gameCount));
     statsRow.appendChild(makeSessionStat("Avg Goals",   sessionAvg("goals")));
-    statsRow.appendChild(makeSessionStat("Avg Saves",   sessionAvg("saves")));
     statsRow.appendChild(makeSessionStat("Avg Assists", sessionAvg("assists")));
+    statsRow.appendChild(makeSessionStat("Avg Saves",   sessionAvg("saves")));
     statsRow.appendChild(makeSessionStat("Avg Shots",   sessionAvg("shots")));
 
     // Hover: show mini chart popup after a short delay (avoids flashing on quick mouse-overs)
@@ -2554,7 +2642,7 @@ function setupFormKeyboard() {
 
   // Auto-select the full value on focus so typing replaces it rather than appending.
   // Without this, tabbing to Goals (showing "0") requires a backspace before typing.
-  ["mmr-change-input", "opp-mmr-input", "goals-input", "saves-input", "assists-input", "shots-input"].forEach(function(id) {
+  ["mmr-change-input", "opp-mmr-input", "goals-input", "assists-input", "saves-input", "shots-input"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("focus", function() { this.select(); });
   });
@@ -2644,8 +2732,8 @@ function handleFormSubmit(e) {
     mmrChange:   mmrChange,
     result:      result,
     goals:       parseInt(document.getElementById("goals-input").value)   || 0,
-    saves:       parseInt(document.getElementById("saves-input").value)   || 0,
     assists:     parseInt(document.getElementById("assists-input").value) || 0,
+    saves:       parseInt(document.getElementById("saves-input").value)   || 0,
     shots:       parseInt(document.getElementById("shots-input").value)   || 0,
     mvp:         document.getElementById("mvp-checkbox").checked,
     opponentMmr: isNaN(rawOppMmr) || rawOppMmr <= 0 ? null : rawOppMmr
@@ -2693,8 +2781,8 @@ function resetForm() {
   document.getElementById("mmr-change-input").value = "";
   document.getElementById("opp-mmr-input").value    = "";
   document.getElementById("goals-input").value      = 0;
-  document.getElementById("saves-input").value      = 0;
   document.getElementById("assists-input").value    = 0;
+  document.getElementById("saves-input").value      = 0;
   document.getElementById("shots-input").value      = 0;
   document.getElementById("mvp-checkbox").checked   = false;
 
@@ -2884,15 +2972,116 @@ function init() {
   // If there's an active session, snap to its mode so the log form shows
   if (activeSession && activeSession.mode) activeMode = activeSession.mode;
 
-  // Apply saved theme (before charts build so colors are correct from the start)
-  var savedTheme = localStorage.getItem("rl_theme") || "ghost";
-  currentTheme = savedTheme;
-  document.documentElement.setAttribute("data-theme", savedTheme);
+  // Load saved custom colors (or use defaults on first run)
+  var savedColors   = localStorage.getItem("rl_custom_colors");
+  var initialColors = savedColors ? JSON.parse(savedColors) : DEFAULT_COLORS;
 
-  // Wire theme switcher buttons
-  document.querySelectorAll(".theme-btn").forEach(function(btn) {
-    btn.classList.toggle("active", btn.dataset.theme === savedTheme);
-    btn.addEventListener("click", function() { setTheme(btn.dataset.theme); });
+  // Sync the color picker inputs to whatever is saved
+  document.getElementById("color-accent").value  = initialColors.accent;
+  document.getElementById("color-bg").value      = initialColors.bg;
+  document.getElementById("color-surface").value = initialColors.surface;
+  document.getElementById("color-win").value     = initialColors.win;
+  document.getElementById("color-loss").value    = initialColors.loss;
+
+  // Apply colors immediately so the page renders in the right palette
+  applyColors(initialColors);
+
+  // Wire up color pickers — applyColors fires live as the user drags
+  function readPickerColors() {
+    return {
+      accent:  document.getElementById("color-accent").value,
+      bg:      document.getElementById("color-bg").value,
+      surface: document.getElementById("color-surface").value,
+      win:     document.getElementById("color-win").value,
+      loss:    document.getElementById("color-loss").value
+    };
+  }
+
+  ["color-accent","color-bg","color-surface","color-win","color-loss"].forEach(function(id) {
+    document.getElementById(id).addEventListener("input", function() {
+      applyColors(readPickerColors());
+    });
+  });
+
+  // Build preset swatches for each color row
+  document.querySelectorAll(".color-row").forEach(function(row) {
+    var input      = row.querySelector("input[type='color']");
+    var swatchesEl = row.querySelector(".color-swatches");
+    if (!input || !swatchesEl) return;
+
+    var presets = COLOR_PRESETS[input.id];
+    if (!presets) return;
+
+    presets.forEach(function(color) {
+      var btn = document.createElement("button");
+      btn.type             = "button";
+      btn.className        = "color-swatch";
+      btn.dataset.color    = color;
+      btn.style.background = color;
+      btn.title            = color;
+
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        input.value = color;
+        input.dispatchEvent(new Event("input")); // triggers applyColors via picker listener
+      });
+
+      swatchesEl.appendChild(btn);
+    });
+  });
+
+  // Marks the swatch matching the current picker value as active.
+  // Called after applyColors so the ring stays in sync.
+  function syncSwatches() {
+    document.querySelectorAll(".color-row").forEach(function(row) {
+      var input = row.querySelector("input[type='color']");
+      if (!input) return;
+      row.querySelectorAll(".color-swatch").forEach(function(swatch) {
+        swatch.classList.toggle("active",
+          swatch.dataset.color.toLowerCase() === input.value.toLowerCase());
+      });
+    });
+  }
+
+  syncSwatches(); // mark the initial active swatches on load
+
+  // Re-sync after every color change so the active ring moves to the new selection
+  ["color-accent","color-bg","color-surface","color-win","color-loss"].forEach(function(id) {
+    document.getElementById(id).addEventListener("input", syncSwatches);
+  });
+
+  // Reset button restores factory defaults
+  document.getElementById("reset-colors-btn").addEventListener("click", function() {
+    applyColors(DEFAULT_COLORS);
+    document.getElementById("color-accent").value  = DEFAULT_COLORS.accent;
+    document.getElementById("color-bg").value      = DEFAULT_COLORS.bg;
+    document.getElementById("color-surface").value = DEFAULT_COLORS.surface;
+    document.getElementById("color-win").value     = DEFAULT_COLORS.win;
+    document.getElementById("color-loss").value    = DEFAULT_COLORS.loss;
+    syncSwatches();
+  });
+
+  // Toggle the customize panel; close on any outside click
+  var customizeBtn   = document.getElementById("customize-btn");
+  var customizePanel = document.getElementById("customize-panel");
+
+  // Move panel to <body> so it escapes #app's stacking context (z-index:1).
+  // Without this, even z-index:9000 is capped inside #app's stacking context.
+  document.body.appendChild(customizePanel);
+
+  customizeBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    var isOpen = customizePanel.classList.toggle("open");
+    if (isOpen) {
+      var rect = customizeBtn.getBoundingClientRect();
+      customizePanel.style.top   = (rect.bottom + 8) + "px";
+      customizePanel.style.right = (window.innerWidth - rect.right) + "px";
+    }
+  });
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest("#color-customizer") && !e.target.closest("#customize-panel")) {
+      customizePanel.classList.remove("open");
+    }
   });
 
   // Wire up buttons
@@ -2939,10 +3128,10 @@ function init() {
     }
   }
 
-  // Build both charts, then apply theme colors
+  // Build both charts, then apply the current accent color
   buildInSessionChart();
   buildLongTermChart();
-  updateChartColors(savedTheme);
+  updateChartColors(customAccentHex, customAccentRgb);
 
   // Build the concept library (static, built once)
   updateConceptLibrary();
@@ -2968,62 +3157,139 @@ document.addEventListener("DOMContentLoaded", init);
 // THEME MANAGEMENT
 // ============================================================
 
-var THEME_PALETTE = {
-  ghost:      { hex: "#2563eb", rgb: "37,99,235",   grid: "rgba(0,0,0,0.04)"   },
-  midnight:   { hex: "#60a5fa", rgb: "96,165,250",  grid: "rgba(255,255,255,0.05)" },
-  supersonic: { hex: "#f97316", rgb: "249,115,22",  grid: "rgba(255,255,255,0.05)" },
-  synthwave:  { hex: "#e040fb", rgb: "224,64,251",  grid: "rgba(255,255,255,0.04)" },
-  carbon:     { hex: "#a3e635", rgb: "163,230,53",  grid: "rgba(255,255,255,0.03)" }
+// ============================================================
+// COLOR CUSTOMIZER
+// Replaces the old preset theme system. The user can freely
+// pick any accent, background, card, win, and loss color.
+// All derived values (accent-dim, glow, shadow-glow, etc.)
+// are computed from the chosen colors and written as CSS vars.
+// ============================================================
+
+// Factory-default colors — what "Reset to default" restores.
+var DEFAULT_COLORS = {
+  accent:  "#2563eb",
+  bg:      "#f3f6ff",
+  surface: "#ffffff",
+  win:     "#16a34a",
+  loss:    "#dc2626"
 };
 
-var currentTheme = "ghost";
+// Preset swatches shown for each color picker.
+// The first entry in each array matches the factory default.
+var COLOR_PRESETS = {
+  "color-accent":  ["#2563eb","#7c3aed","#f97316","#0891b2","#e040fb","#16a34a"],
+  "color-bg":      ["#f3f6ff","#ffffff","#faf8f5","#f5f5f5","#fefce8","#f0fdf4"],
+  "color-surface": ["#ffffff","#fafafa","#fdf8f0","#f0f4ff","#f8fafc","#fefce8"],
+  "color-win":     ["#16a34a","#059669","#0891b2","#3b82f6","#8b5cf6"],
+  "color-loss":    ["#dc2626","#ef4444","#f43f5e","#f97316","#d97706"]
+};
 
-function setTheme(theme) {
-  currentTheme = theme;
-  document.documentElement.setAttribute("data-theme", theme);
-  localStorage.setItem("rl_theme", theme);
+// Current accent as an "r,g,b" string — shared by chart glow plugin.
+var customAccentRgb = "37,99,235";
+var customAccentHex = "#2563eb";
 
-  // Update active swatch
-  document.querySelectorAll(".theme-btn").forEach(function(btn) {
-    btn.classList.toggle("active", btn.dataset.theme === theme);
-  });
-
-  // Update chart colors to match new theme
-  updateChartColors(theme);
+// Converts a 6-digit hex color to an {r, g, b} object.
+function hexToRgb(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16)
+  };
 }
 
-function updateChartColors(theme) {
-  var p = THEME_PALETTE[theme] || THEME_PALETTE.ghost;
+// Converts a hex color + alpha (0–1) to an rgba() string.
+function hexToRgba(hex, alpha) {
+  var c = hexToRgb(hex);
+  return "rgba(" + c.r + "," + c.g + "," + c.b + "," + alpha + ")";
+}
 
+// Returns a darkened version of a hex color (for hover states).
+function darkenHex(hex, amount) {
+  var c = hexToRgb(hex);
+  return "#" + [c.r - amount, c.g - amount, c.b - amount]
+    .map(function(v) { return Math.max(0, v).toString(16).padStart(2, "0"); })
+    .join("");
+}
+
+// Writes all color CSS variables from a colors object, updates
+// charts, updates the wordmark gradient, and saves to localStorage.
+function applyColors(colors) {
+  var root = document.documentElement;
+  var a    = hexToRgb(colors.accent);
+  var aRgb = a.r + "," + a.g + "," + a.b;
+  customAccentRgb = aRgb;
+  customAccentHex = colors.accent;
+
+  // Accent and its derived opacity/hover variants
+  root.style.setProperty("--accent",       colors.accent);
+  root.style.setProperty("--accent-dim",   "rgba(" + aRgb + ",0.10)");
+  root.style.setProperty("--accent-glow",  "rgba(" + aRgb + ",0.22)");
+  root.style.setProperty("--accent-hover", darkenHex(colors.accent, 25));
+  root.style.setProperty("--shadow-glow",
+    "0 0 0 1px rgba(" + aRgb + ",0.20), 0 8px 32px rgba(" + aRgb + ",0.20)");
+
+  // Background and card surface (surface keeps 80% opacity for glassmorphism)
+  root.style.setProperty("--bg",            colors.bg);
+  root.style.setProperty("--surface",       hexToRgba(colors.surface, 0.80));
+  root.style.setProperty("--surface-solid", colors.surface);
+
+  // Win color and its background tint
+  var w    = hexToRgb(colors.win);
+  var wRgb = w.r + "," + w.g + "," + w.b;
+  root.style.setProperty("--win",    colors.win);
+  root.style.setProperty("--win-bg", "rgba(" + wRgb + ",0.08)");
+
+  // Loss color and its background tint
+  var l    = hexToRgb(colors.loss);
+  var lRgb = l.r + "," + l.g + "," + l.b;
+  root.style.setProperty("--loss",    colors.loss);
+  root.style.setProperty("--loss-bg", "rgba(" + lRgb + ",0.08)");
+
+  // Update the RL wordmark gradient and the background blobs to match
+  var wordmarkEl = document.getElementById("app-wordmark");
+  if (wordmarkEl) {
+    wordmarkEl.style.background = "linear-gradient(135deg, " + colors.accent + " 0%, #7c3aed 100%)";
+    wordmarkEl.style.webkitBackgroundClip = "text";
+    wordmarkEl.style.backgroundClip       = "text";
+    wordmarkEl.style.webkitTextFillColor  = "transparent";
+  }
+
+  // Sync blob tint to accent so they glow with the chosen color
+  var blobGrad = "radial-gradient(circle, rgba(" + aRgb + ",0.14) 0%, transparent 70%)";
+  var b1 = document.getElementById("blob-1");
+  var b2 = document.getElementById("blob-2");
+  if (b1) b1.style.background = blobGrad;
+  if (b2) b2.style.background = "radial-gradient(circle, rgba(" + aRgb + ",0.10) 0%, transparent 70%)";
+
+  // Update chart line colors
+  updateChartColors(colors.accent, aRgb);
+
+  localStorage.setItem("rl_custom_colors", JSON.stringify(colors));
+}
+
+// Updates both line charts to use the given accent hex and rgb string.
+function updateChartColors(hex, rgb) {
   [inSessionChart, longTermChart].forEach(function(chart) {
     if (!chart || !chart.data.datasets[0]) return;
 
-    var hex = p.hex;
-    var r   = parseInt(hex.slice(1,3), 16);
-    var g   = parseInt(hex.slice(3,5), 16);
-    var b   = parseInt(hex.slice(5,7), 16);
-
     chart.data.datasets[0].borderColor         = hex;
     chart.data.datasets[0].pointBackgroundColor = hex;
-    chart.data.datasets[0].pointBorderColor     = theme === "ghost" ? "#ffffff" : "rgba(0,0,0,0.3)";
+    chart.data.datasets[0].pointBorderColor     = "#ffffff";
 
     chart.data.datasets[0].backgroundColor = function(context) {
       var c    = context.chart;
       var area = c.chartArea;
-      if (!area) return "rgba(" + r + "," + g + "," + b + ",0)";
+      if (!area) return "rgba(" + rgb + ",0)";
       var grad = c.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-      grad.addColorStop(0, "rgba(" + r + "," + g + "," + b + ",0.18)");
-      grad.addColorStop(1, "rgba(" + r + "," + g + "," + b + ",0)");
+      grad.addColorStop(0, "rgba(" + rgb + ",0.18)");
+      grad.addColorStop(1, "rgba(" + rgb + ",0)");
       return grad;
     };
 
-    // Update grid colors
-    chart.options.scales.x.grid = { color: p.grid, drawBorder: false };
-    chart.options.scales.y.grid = { color: p.grid, drawBorder: false };
-
-    var tickColor = theme === "ghost" ? "#9aa4be" : "rgba(255,255,255,0.3)";
-    chart.options.scales.x.ticks = { color: tickColor, font: { size: 11 } };
-    chart.options.scales.y.ticks = { color: tickColor, font: { size: 11 } };
+    chart.options.scales.x.grid  = { color: "rgba(0,0,0,0.04)", drawBorder: false };
+    chart.options.scales.y.grid  = { color: "rgba(0,0,0,0.04)", drawBorder: false };
+    chart.options.scales.x.ticks = { color: "#9aa4be", font: { size: 11 } };
+    chart.options.scales.y.ticks = { color: "#9aa4be", font: { size: 11 } };
 
     chart.update();
   });
@@ -3032,14 +3298,13 @@ function updateChartColors(theme) {
 // ============================================================
 // CHART GLOW PLUGIN
 // Registered globally so all charts get a glowing line.
-// Sets a canvas shadow before each dataset draws.
+// Uses customAccentRgb so it always matches the chosen color.
 // ============================================================
 Chart.register({
   id: "lineGlow",
   beforeDatasetDraw: function(chart) {
-    var p = THEME_PALETTE[currentTheme] || THEME_PALETTE.ghost;
     chart.ctx.save();
-    chart.ctx.shadowColor = "rgba(" + p.rgb + ", 0.55)";
+    chart.ctx.shadowColor = "rgba(" + customAccentRgb + ",0.55)";
     chart.ctx.shadowBlur  = 14;
   },
   afterDatasetDraw: function(chart) {
@@ -3216,23 +3481,24 @@ function initDesign() {
   function applyGradientFill(chart) {
     if (!chart || !chart.data || !chart.data.datasets[0]) return;
     chart.data.datasets[0].fill = true;
+    // Use customAccentRgb/Hex so the gradient always matches the chosen color
     chart.data.datasets[0].backgroundColor = function(context) {
-      var c = context.chart;
+      var c    = context.chart;
       var area = c.chartArea;
-      if (!area) return "rgba(37,99,235,0)";
+      if (!area) return "rgba(" + customAccentRgb + ",0)";
       var grad = c.ctx.createLinearGradient(0, area.top, 0, area.bottom);
-      grad.addColorStop(0, "rgba(37,99,235,0.14)");
-      grad.addColorStop(1, "rgba(37,99,235,0)");
+      grad.addColorStop(0, "rgba(" + customAccentRgb + ",0.14)");
+      grad.addColorStop(1, "rgba(" + customAccentRgb + ",0)");
       return grad;
     };
-    chart.data.datasets[0].borderColor        = "#2563eb";
-    chart.data.datasets[0].borderWidth        = 2.5;
-    chart.data.datasets[0].pointBackgroundColor = "#2563eb";
-    chart.data.datasets[0].pointBorderColor    = "#ffffff";
-    chart.data.datasets[0].pointBorderWidth    = 2;
-    chart.data.datasets[0].pointRadius        = 4;
-    chart.data.datasets[0].pointHoverRadius   = 6;
-    chart.data.datasets[0].tension            = 0.35;
+    chart.data.datasets[0].borderColor         = customAccentHex;
+    chart.data.datasets[0].borderWidth         = 2.5;
+    chart.data.datasets[0].pointBackgroundColor = customAccentHex;
+    chart.data.datasets[0].pointBorderColor     = "#ffffff";
+    chart.data.datasets[0].pointBorderWidth     = 2;
+    chart.data.datasets[0].pointRadius         = 4;
+    chart.data.datasets[0].pointHoverRadius    = 6;
+    chart.data.datasets[0].tension             = 0.35;
 
     // Cleaner grid styling
     chart.options.scales.x.grid  = { color: "rgba(0,0,0,0.04)", drawBorder: false };

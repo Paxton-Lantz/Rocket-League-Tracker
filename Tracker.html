@@ -29,13 +29,47 @@
         <h1 id="app-title">Tracker</h1>
         <p id="app-subtitle">Rocket League &middot; Personal Stats &amp; AI Coaching</p>
       </div>
-      <!-- Theme switcher — five swatch circles, one per theme -->
-      <div id="theme-switcher">
-        <button class="theme-btn" data-theme="ghost"      title="Ghost"      aria-label="Light theme"></button>
-        <button class="theme-btn" data-theme="midnight"   title="Midnight"   aria-label="Midnight theme"></button>
-        <button class="theme-btn" data-theme="supersonic" title="Supersonic" aria-label="Supersonic theme"></button>
-        <button class="theme-btn" data-theme="synthwave"  title="Synthwave"  aria-label="Synthwave theme"></button>
-        <button class="theme-btn" data-theme="carbon"     title="Carbon"     aria-label="Carbon theme"></button>
+      <!-- Color customizer — pick any color for accent, background, cards, win, loss -->
+      <div id="color-customizer">
+        <button id="customize-btn" title="Customize colors" aria-label="Customize colors">Customize</button>
+        <div id="customize-panel">
+          <div class="color-row">
+            <label>Accent</label>
+            <div class="color-row-controls">
+              <div class="color-swatches"></div>
+              <input type="color" id="color-accent" value="#2563eb">
+            </div>
+          </div>
+          <div class="color-row">
+            <label>Background</label>
+            <div class="color-row-controls">
+              <div class="color-swatches"></div>
+              <input type="color" id="color-bg" value="#f3f6ff">
+            </div>
+          </div>
+          <div class="color-row">
+            <label>Cards</label>
+            <div class="color-row-controls">
+              <div class="color-swatches"></div>
+              <input type="color" id="color-surface" value="#ffffff">
+            </div>
+          </div>
+          <div class="color-row">
+            <label>Win</label>
+            <div class="color-row-controls">
+              <div class="color-swatches"></div>
+              <input type="color" id="color-win" value="#16a34a">
+            </div>
+          </div>
+          <div class="color-row">
+            <label>Loss</label>
+            <div class="color-row-controls">
+              <div class="color-swatches"></div>
+              <input type="color" id="color-loss" value="#dc2626">
+            </div>
+          </div>
+          <button id="reset-colors-btn">Reset to default</button>
+        </div>
       </div>
       <button id="minimize-btn" title="Minimize to widget">⊟</button>
     </header>
@@ -213,6 +247,8 @@
         </div>
       </div>
 
+      <div id="capture-status" class="capture-status capture-status-idle"></div>
+
       <h2>Log a Game</h2>
 
       <form id="log-form" novalidate>
@@ -226,10 +262,10 @@
           <span class="hint">Positive = Win &nbsp;&nbsp; Negative = Loss &nbsp;&nbsp; Tab ↹</span>
         </div>
 
-        <!-- OPPONENT MMR — optional, shows their rank live as you type -->
+        <!-- OPPONENT MMR — highest-ranked opponent, optional -->
         <div class="field-row">
-          <label for="opp-mmr-input">Opp MMR</label>
-          <input type="number" id="opp-mmr-input" min="0" placeholder="optional">
+          <label for="opp-mmr-input">Top Opp MMR</label>
+          <input type="number" id="opp-mmr-input" min="0" placeholder="highest opponent">
           <div id="opp-rank-display">
             <img id="opp-rank-icon" src="" alt="" />
             <span id="opp-rank-name"></span>
@@ -243,17 +279,17 @@
           <span class="hint">Tab ↹ to advance</span>
         </div>
 
-        <!-- SAVES -->
-        <div class="field-row">
-          <label for="saves-input">Saves</label>
-          <input type="number" id="saves-input" name="saves" min="0" value="0">
-          <span class="hint">Tab ↹ to advance</span>
-        </div>
-
         <!-- ASSISTS -->
         <div class="field-row">
           <label for="assists-input">Assists</label>
           <input type="number" id="assists-input" name="assists" min="0" value="0">
+          <span class="hint">Tab ↹ to advance</span>
+        </div>
+
+        <!-- SAVES -->
+        <div class="field-row">
+          <label for="saves-input">Saves</label>
+          <input type="number" id="saves-input" name="saves" min="0" value="0">
           <span class="hint">Tab ↹ to advance</span>
         </div>
 
@@ -320,12 +356,12 @@
           <span class="stat-card-value" id="avg-goals">—</span>
         </div>
         <div class="stat-card">
-          <span class="stat-card-label">Avg Saves</span>
-          <span class="stat-card-value" id="avg-saves">—</span>
-        </div>
-        <div class="stat-card">
           <span class="stat-card-label">Avg Assists</span>
           <span class="stat-card-value" id="avg-assists">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Avg Saves</span>
+          <span class="stat-card-value" id="avg-saves">—</span>
         </div>
         <div class="stat-card">
           <span class="stat-card-label">Avg Shots</span>
@@ -401,10 +437,10 @@
             <th>Date</th>
             <th>MMR ±</th>
             <th>Result</th>
-            <th>Opp</th>
+            <th>Top Opp</th>
             <th>Goals</th>
-            <th>Saves</th>
             <th>Assists</th>
+            <th>Saves</th>
             <th>Shots</th>
             <th>MVP</th>
             <th>Delete</th>
