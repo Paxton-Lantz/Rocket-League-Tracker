@@ -2,3 +2,4 @@ mss
 pytesseract
 opencv-python
 Pillow
+pystray

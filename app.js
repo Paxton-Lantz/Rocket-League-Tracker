@@ -963,9 +963,19 @@ let coachingAlertActive       = false;
 let gamesLoggedSinceLastAlert = 0;
 
 // Capture daemon state
-let lastCaptureTimestamp  = 0;
-let lastCaptureWallTime   = 0;   // Date.now() of the last successful capture
+let lastCaptureTimestamp   = 0;
+let lastCaptureWallTime    = 0;   // Date.now() of the last successful capture
 let capturePollingInterval = null;
+
+// Returns the stored Epic username, or empty string if not set.
+function getCaptureUsername() {
+  return localStorage.getItem("rl_capture_username") || "";
+}
+
+// Saves the username and syncs the input field value.
+function setCaptureUsername(name) {
+  localStorage.setItem("rl_capture_username", name.trim());
+}
 
 
 // ============================================================
@@ -1223,19 +1233,23 @@ function stopCapturePolling() {
 }
 
 // Fetch the latest capture result from the daemon.
+// Passes the username as a query param so the daemon knows whose row to find —
+// the user sets it once in the browser; no config file editing required.
 function pollCapture() {
-  fetch("http://localhost:" + CAPTURE_PORT + "/latest")
+  var username = getCaptureUsername();
+  var url      = "http://localhost:" + CAPTURE_PORT + "/latest"
+               + (username ? "?username=" + encodeURIComponent(username) : "");
+
+  fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(data) {
       updateCaptureStatus("connected");
-      // data.timestamp is 0 on startup — only act when a real capture has landed
       if (data.timestamp && data.timestamp !== lastCaptureTimestamp) {
         lastCaptureTimestamp = data.timestamp;
         applyCapture(data);
       }
     })
     .catch(function() {
-      // Daemon isn't running — silently show offline status
       updateCaptureStatus("disconnected");
     });
 }
@@ -1291,17 +1305,15 @@ function updateCaptureStatus(state) {
   el.textContent = label;
 }
 
-// One-shot connection test — used by the "Test connection" button.
-// Shows the result in the pill without requiring an active session.
+// One-shot connection test — used by the "Test" button.
 function testCaptureConnection() {
-  fetch("http://localhost:" + CAPTURE_PORT + "/latest")
+  var username = getCaptureUsername();
+  var url      = "http://localhost:" + CAPTURE_PORT + "/latest"
+               + (username ? "?username=" + encodeURIComponent(username) : "");
+  fetch(url)
     .then(function(r) { return r.json(); })
-    .then(function() {
-      updateCaptureStatus("connected");
-    })
-    .catch(function() {
-      updateCaptureStatus("disconnected");
-    });
+    .then(function() { updateCaptureStatus("connected"); })
+    .catch(function() { updateCaptureStatus("disconnected"); });
 }
 
 
@@ -3304,7 +3316,16 @@ function init() {
   document.getElementById("coaching-dismiss-btn").addEventListener("click", dismissCoachingAlert);
   document.getElementById("log-form").addEventListener("submit", handleFormSubmit);
 
-  // Wire capture test button — works outside a session so users can verify the daemon is running
+  // Pre-fill username input from localStorage and save changes back
+  var usernameInput = document.getElementById("capture-username-input");
+  if (usernameInput) {
+    usernameInput.value = getCaptureUsername();
+    usernameInput.addEventListener("input", function() {
+      setCaptureUsername(usernameInput.value);
+    });
+  }
+
+  // Wire capture test button
   var captureTestBtn = document.getElementById("capture-test-btn");
   if (captureTestBtn) captureTestBtn.addEventListener("click", testCaptureConnection);
 

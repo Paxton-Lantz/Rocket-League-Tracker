@@ -50,10 +50,15 @@ a = Analysis(
         "cv2",
         "PIL",
         "PIL.Image",
+        "PIL.ImageDraw",
         "PIL.ImageEnhance",
         "numpy",
         "numpy.core._methods",
         "numpy.lib.format",
+        "pystray",
+        "pystray._win32",
+        "pystray._base",
+        "winreg",
     ],
     hookspath=[],
     hooksconfig={},
@@ -81,7 +86,7 @@ exe = EXE(
     upx=True,          # compress with UPX if available — reduces size ~30%
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,      # keep the terminal open so the user can see daemon logs
+    console=False,     # tray app — no terminal window; logs go to rl-capture.log
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

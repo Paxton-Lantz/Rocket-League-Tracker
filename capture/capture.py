@@ -1,17 +1,18 @@
 """
 RL Capture Daemon
 -----------------
-Polls the screen every second, detects the Rocket League end screen via OCR,
-extracts your stats, and serves them as JSON at localhost:7891/latest.
+Watches your screen for the Rocket League end-of-game scoreboard, reads your
+stats via OCR, and makes them available at localhost:7891/latest so the tracker
+can pre-fill the log form automatically.
 
-The tracker app polls this endpoint and pre-fills the log form automatically.
-You still hit Enter to confirm -- nothing auto-submits.
-
-Setup: run install.bat once, then edit config.json with your username,
-then run start.bat before each session.
+User setup: download rl-capture.exe, double-click it. That's it.
+  - Runs silently in the system tray.
+  - Registers itself to start automatically with Windows.
+  - Username comes from the tracker browser (no config file needed).
 """
 
 import json
+import logging
 import os
 import re
 import sys
@@ -19,65 +20,79 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import cv2
 import mss
 import numpy as np
 import pytesseract
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageDraw, ImageEnhance
 from pytesseract import Output
 
-# ── Path resolution (PyInstaller bundle vs. normal run) ──────────────────────
-# When bundled with PyInstaller --onefile, sys.frozen is True.
+# ── Path resolution ───────────────────────────────────────────────────────────
+# sys.frozen is True when running as a PyInstaller .exe.
 # sys._MEIPASS is the temp dir where bundled files are extracted at runtime.
-# sys.executable is the .exe file itself — config.json should live next to it.
-#
-# When running normally (python capture.py), both paths are script-relative.
+# sys.executable is the .exe path — config.json and the log live next to it.
 
-if getattr(sys, "frozen", False):
+_IS_FROZEN = getattr(sys, "frozen", False)
+
+if _IS_FROZEN:
     _bundle_dir = sys._MEIPASS
-    _exe_dir    = os.path.dirname(sys.executable)
-    # Point pytesseract at the Tesseract binary bundled inside the exe
+    _exe_dir    = Path(sys.executable).parent
     pytesseract.pytesseract.tesseract_cmd = os.path.join(_bundle_dir, "tesseract", "tesseract.exe")
-    # Tell Tesseract where the language data lives inside the bundle
-    os.environ["TESSDATA_PREFIX"] = os.path.join(_bundle_dir, "tessdata")
-    CONFIG_PATH = Path(_exe_dir) / "config.json"
+    os.environ["TESSDATA_PREFIX"]         = os.path.join(_bundle_dir, "tessdata")
 else:
+    _exe_dir = Path(__file__).parent
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-    CONFIG_PATH = Path(__file__).parent / "config.json"
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Logging ───────────────────────────────────────────────────────────────────
+# In the frozen .exe there's no console, so write to a log file next to the exe.
+# In dev mode, print to stdout as usual.
 
-def load_config():
-    try:
-        with open(CONFIG_PATH) as f:
-            cfg = json.load(f)
-    except FileNotFoundError:
-        print("ERROR: config.json not found. Copy it from the capture folder and edit your username.")
-        sys.exit(1)
+if _IS_FROZEN:
+    logging.basicConfig(
+        filename=str(_exe_dir / "rl-capture.log"),
+        level=logging.INFO,
+        format="%(asctime)s  %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    log = logging.info
+else:
+    log = print
 
-    if cfg.get("username", "YourUsernameHere") == "YourUsernameHere":
-        print("ERROR: Edit config.json and set your in-game username before running.")
-        sys.exit(1)
+# ── Config (optional) ─────────────────────────────────────────────────────────
+# config.json is entirely optional. Username now comes from the tracker browser.
+# Only use config.json to override monitor index or brightness threshold.
 
-    return cfg
+_cfg_path = _exe_dir / "config.json"
+_cfg = {}
+try:
+    with open(_cfg_path) as _f:
+        _cfg = json.load(_f)
+except (FileNotFoundError, json.JSONDecodeError):
+    pass  # fine — all values have sensible defaults
 
-CONFIG   = load_config()
-USERNAME = CONFIG["username"].lower()
-PORT     = CONFIG.get("port", 7891)
-MONITOR  = CONFIG.get("monitor", 1)  # 1 = primary monitor; change to 2 for secondary
+PORT                 = _cfg.get("port", 7891)
+MONITOR              = _cfg.get("monitor", 1)
+BRIGHTNESS_THRESHOLD = _cfg.get("brightness_threshold", 70)
 
-# Brightness threshold for the fast pre-check (0-255).
-# The end screen dims the game background; gameplay is brighter.
-# Lower = stricter (fewer false OCR runs). Raise it if captures are missed.
-# Can also be set in config.json as "brightness_threshold".
-BRIGHTNESS_THRESHOLD = CONFIG.get("brightness_threshold", 70)
+# ── Username (set by tracker browser via query param) ─────────────────────────
+# The tracker passes ?username=YourName on every poll request.
+# The poll loop uses this to locate the player's row on the scoreboard.
 
-# Point pytesseract at the default Tesseract install location on Windows.
-# If you installed to a custom path, change this.
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+_username_lock = threading.Lock()
+_username      = _cfg.get("username", "").lower().strip()  # fallback if set in config
 
-# ── Shared state (written by poll loop, read by HTTP handler) ─────────────────
+def get_username():
+    with _username_lock:
+        return _username
+
+def set_username(name):
+    global _username
+    with _username_lock:
+        _username = name.lower().strip()
+
+# ── Shared capture result ─────────────────────────────────────────────────────
 
 _latest_lock = threading.Lock()
 _latest = {
@@ -93,36 +108,26 @@ _latest = {
 # ── Screen capture ────────────────────────────────────────────────────────────
 
 def grab_screen():
-    """Capture the configured monitor and return a PIL RGB image."""
     with mss.mss() as sct:
         monitor = sct.monitors[MONITOR]
-        shot = sct.grab(monitor)
+        shot    = sct.grab(monitor)
         return Image.frombytes("RGB", shot.size, shot.rgb)
 
 
 def preprocess(img):
-    """Convert to grayscale + boost contrast for better OCR on dark backgrounds."""
     gray = img.convert("L")
     return ImageEnhance.Contrast(gray).enhance(1.5)
 
 
 def is_dark_enough_for_ocr(img):
     """
-    Fast pre-check that runs BEFORE Tesseract to avoid wasting CPU every second.
-
-    Crops a proportional strip where the scoreboard header sits (~40-90% width,
-    15-30% height), downsamples it to 8x4 pixels, and checks average brightness.
-
-    The RL end screen dims the game background significantly. During active
-    gameplay the arena is much brighter. If brightness >= BRIGHTNESS_THRESHOLD
-    we skip OCR entirely — Tesseract never runs.
-
-    If you're missing captures (end screen not detected), raise brightness_threshold
-    in config.json. If OCR runs too often during gameplay, lower it.
+    Fast pre-check before running Tesseract. The RL end screen darkens the
+    background significantly vs. active gameplay. Crops the scoreboard region,
+    downsamples to 8x4 px, checks average brightness. Returns True if dark
+    enough to be worth running OCR.
     """
-    w, h = img.size
-    region = img.crop((int(w * 0.40), int(h * 0.15),
-                       int(w * 0.90), int(h * 0.30)))
+    w, h   = img.size
+    region = img.crop((int(w * 0.40), int(h * 0.15), int(w * 0.90), int(h * 0.30)))
     thumb  = region.resize((8, 4), Image.LANCZOS).convert("L")
     pixels = list(thumb.getdata())
     avg    = sum(pixels) / len(pixels)
@@ -130,16 +135,13 @@ def is_dark_enough_for_ocr(img):
 
 # ── OCR helpers ───────────────────────────────────────────────────────────────
 
-# The four column headers that only appear together on the post-game scoreboard.
 REQUIRED_HEADERS = {"GOALS", "ASSISTS", "SAVES", "SHOTS"}
 
 def run_ocr(img):
-    """Run Tesseract on a preprocessed image. Returns the pytesseract data dict."""
     return pytesseract.image_to_data(img, output_type=Output.DICT)
 
 
 def is_end_screen(words):
-    """Return True if all four stat column headers are found with confidence > 50."""
     found = set()
     for i, word in enumerate(words["text"]):
         if word and int(words["conf"][i]) > 50 and word.upper() in REQUIRED_HEADERS:
@@ -148,37 +150,27 @@ def is_end_screen(words):
 
 
 def find_header_positions(words):
-    """Return {header: center_x} for each of the four stat column headers."""
     cols = {}
     for i, word in enumerate(words["text"]):
         w = word.upper() if word else ""
         if w in REQUIRED_HEADERS and int(words["conf"][i]) > 50:
-            if w not in cols:  # take the first (topmost) occurrence
+            if w not in cols:
                 cx = words["left"][i] + words["width"][i] // 2
                 cols[w] = cx
     return cols
 
 
-def find_username_row(words):
-    """
-    Find the row containing the player's username.
-    Returns (row_y, username_left_x) or (None, None) if not found.
-    """
+def find_username_row(words, username):
     for i, word in enumerate(words["text"]):
-        if word and USERNAME in word.lower():
+        if word and username in word.lower():
             row_y = words["top"][i] + words["height"][i] // 2
             return row_y, words["left"][i]
     return None, None
 
 
 def find_nearest_number(words, col_x, row_y, v_tol=50, h_tol=80):
-    """
-    Find the numeric word closest to (col_x, row_y) within the tolerance window.
-    Returns the word string or None.
-    """
     best_word = None
     best_dist = float("inf")
-
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
             continue
@@ -189,18 +181,12 @@ def find_nearest_number(words, col_x, row_y, v_tol=50, h_tol=80):
             if dist < best_dist:
                 best_dist = dist
                 best_word = word
-
     return best_word
 
 
 MMR_PATTERN = re.compile(r"^[+-]?\d+$")
 
 def find_mmr_delta(words, row_y, username_x, v_tol=50):
-    """
-    Find the MMR change value to the left of the username in the player row.
-    Looks for a token matching +N or -N (or bare N) at x < username_x.
-    Returns the integer value (positive for win, negative for loss).
-    """
     candidates = []
     for i, word in enumerate(words["text"]):
         if not word or not MMR_PATTERN.match(word):
@@ -209,95 +195,72 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
         wy = words["top"][i] + words["height"][i] // 2
         if abs(wy - row_y) <= v_tol and wx < username_x:
             candidates.append((wx, int(word)))
-
     if not candidates:
         return 0
-    # Take the leftmost match (MMR delta is the furthest-left number in the row)
     candidates.sort(key=lambda c: c[0])
     return candidates[0][1]
 
-# ── MVP detection (color-based) ───────────────────────────────────────────────
+# ── MVP detection ─────────────────────────────────────────────────────────────
 
 def detect_mvp(img_rgb, row_y, username_x):
-    """
-    Look for a gold/yellow star pixel cluster to the left of the username
-    at the player's row y-position.
-
-    Gold in HSV: H 20-40, S > 100, V > 150.
-    Returns True if enough gold pixels are found, else False.
-    """
+    """Gold/yellow pixel cluster (HSV H:20-40, S>100, V>150) left of username."""
     img_np  = np.array(img_rgb)
     img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-
-    h, w = img_np.shape[:2]
-    y1 = max(0, row_y - 25)
-    y2 = min(h, row_y + 25)
-    x1 = 0
-    x2 = max(0, username_x - 5)
-
+    h, w    = img_np.shape[:2]
+    y1, y2  = max(0, row_y - 25), min(h, row_y + 25)
+    x1, x2  = 0, max(0, username_x - 5)
     if x2 <= x1:
         return False
-
     region    = img_hsv[y1:y2, x1:x2]
-    gold_mask = cv2.inRange(region,
-                            np.array([20, 100, 150]),
-                            np.array([40, 255, 255]))
+    gold_mask = cv2.inRange(region, np.array([20, 100, 150]), np.array([40, 255, 255]))
     return int(cv2.countNonZero(gold_mask)) > 50
 
 # ── Stat extraction ───────────────────────────────────────────────────────────
 
-def extract_stats(img_pil, words):
-    """
-    Given the raw PIL image and the OCR word dict, extract all stats.
-    Returns a dict with keys: goals, assists, saves, shots, mmr_delta, mvp.
-    Returns None if the player's row could not be located.
-    """
+def extract_stats(img_pil, words, username):
     cols = find_header_positions(words)
     if len(cols) < 4:
-        print(f"  Could not find all column headers (found: {list(cols.keys())})")
+        log(f"  Could not find all column headers (found: {list(cols.keys())})")
         return None
 
-    row_y, username_x = find_username_row(words)
+    row_y, username_x = find_username_row(words, username)
     if row_y is None:
-        print(f"  Username '{CONFIG['username']}' not found on screen")
+        log(f"  Username '{username}' not found on screen")
         return None
 
     stats = {}
     for header in ("GOALS", "ASSISTS", "SAVES", "SHOTS"):
-        col_x  = cols[header]
-        number = find_nearest_number(words, col_x, row_y)
+        number = find_nearest_number(words, cols[header], row_y)
         stats[header.lower()] = int(number) if number else 0
-
-    mmr_delta = find_mmr_delta(words, row_y, username_x)
-    mvp       = detect_mvp(img_pil, row_y, username_x)
 
     return {
         "goals":     stats["goals"],
         "assists":   stats["assists"],
         "saves":     stats["saves"],
         "shots":     stats["shots"],
-        "mmr_delta": mmr_delta,
-        "mvp":       mvp,
+        "mmr_delta": find_mmr_delta(words, row_y, username_x),
+        "mvp":       detect_mvp(img_pil, row_y, username_x),
     }
 
 # ── Poll loop ─────────────────────────────────────────────────────────────────
 
 def poll_loop():
-    """Main loop: screenshot every second, detect end screen, extract stats."""
-    global _latest
+    log("RL Capture started. Watching for end screens...")
 
     end_screen_showing = False
     last_captured_at   = 0.0
 
-    print(f"Watching for Rocket League end screen (username: {CONFIG['username']})...")
-
     while True:
         try:
+            username = get_username()
+            if not username:
+                # Wait for the tracker to send a username before doing anything
+                time.sleep(2)
+                continue
+
             img = grab_screen()
 
-            # Fast brightness check — skip OCR during bright active gameplay.
-            # This runs in microseconds vs ~500ms for Tesseract.
             if not is_dark_enough_for_ocr(img):
                 end_screen_showing = False
                 time.sleep(1)
@@ -308,30 +271,27 @@ def poll_loop():
 
             if is_end_screen(words):
                 if not end_screen_showing:
-                    # End screen just appeared
                     end_screen_showing = True
                     now = time.time()
-
-                    # Debounce: ignore if we captured less than 10s ago
                     if now - last_captured_at < 10:
-                        print("  End screen detected (debounced, too soon)")
+                        log("  End screen detected (debounced)")
                     else:
-                        print("  End screen detected — extracting stats...")
-                        result = extract_stats(img, words)
+                        log("  End screen detected — extracting stats...")
+                        result = extract_stats(img, words, username)
                         if result:
                             with _latest_lock:
                                 _latest = {"timestamp": int(now), **result}
                             last_captured_at = now
-                            print(f"  Captured: {_latest}")
+                            log(f"  Captured: {result}")
                         else:
-                            print("  Extraction failed — check username in config.json")
+                            log("  Extraction failed — username not found on scoreboard")
             else:
                 if end_screen_showing:
-                    print("  End screen dismissed")
+                    log("  End screen dismissed")
                 end_screen_showing = False
 
         except Exception as e:
-            print(f"  Poll error: {e}")
+            log(f"  Poll error: {e}")
 
         time.sleep(1)
 
@@ -339,10 +299,17 @@ def poll_loop():
 
 class CaptureHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path != "/latest":
+        parsed = urlparse(self.path)
+
+        if parsed.path != "/latest":
             self.send_response(404)
             self.end_headers()
             return
+
+        # Accept username from the tracker browser so users never edit a config file
+        params = parse_qs(parsed.query)
+        if "username" in params:
+            set_username(params["username"][0])
 
         with _latest_lock:
             payload = json.dumps(_latest).encode()
@@ -354,17 +321,83 @@ class CaptureHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def log_message(self, format, *args):
-        pass  # suppress per-request logs to keep terminal clean
+        pass  # suppress per-request noise
 
 
 def start_http_server():
     server = HTTPServer(("localhost", PORT), CaptureHandler)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    print(f"HTTP server running at http://localhost:{PORT}/latest")
+    log(f"HTTP server at http://localhost:{PORT}/latest")
+
+# ── Windows startup registration ──────────────────────────────────────────────
+# Adds the .exe to HKCU Run so it starts automatically with Windows.
+# Only runs when frozen (the built .exe), never in dev mode.
+
+def register_startup():
+    if not _IS_FROZEN:
+        return
+    try:
+        import winreg
+        exe_path = f'"{sys.executable}"'
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, winreg.KEY_SET_VALUE | winreg.KEY_QUERY_VALUE,
+        )
+        try:
+            existing = winreg.QueryValueEx(key, "RLCapture")[0]
+            if existing == exe_path:
+                winreg.CloseKey(key)
+                return  # already registered
+        except FileNotFoundError:
+            pass
+        winreg.SetValueEx(key, "RLCapture", 0, winreg.REG_SZ, exe_path)
+        winreg.CloseKey(key)
+        log("Registered in Windows startup.")
+    except Exception as e:
+        log(f"Could not register startup: {e}")
+
+# ── System tray ───────────────────────────────────────────────────────────────
+# Shows a small icon in the Windows system tray. No terminal window.
+# Right-click the icon to quit.
+
+def _make_tray_icon():
+    img  = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([2, 2, 62, 62], fill=(37, 99, 235, 255))   # blue outer circle
+    draw.ellipse([20, 20, 44, 44], fill=(255, 255, 255, 255)) # white inner dot
+    return img
+
+def run_tray():
+    import pystray
+
+    def on_quit(icon, item):
+        icon.stop()
+        os._exit(0)
+
+    icon = pystray.Icon(
+        name="rl-capture",
+        icon=_make_tray_icon(),
+        title="RL Capture — Running",
+        menu=pystray.Menu(
+            pystray.MenuItem("RL Capture", None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Quit", on_quit),
+        ),
+    )
+    icon.run()  # blocks main thread until Quit is clicked
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    register_startup()
     start_http_server()
-    poll_loop()
+
+    poll_thread = threading.Thread(target=poll_loop, daemon=True)
+    poll_thread.start()
+
+    if _IS_FROZEN:
+        run_tray()   # silent tray app — blocks until user quits
+    else:
+        poll_thread.join()  # dev mode: stay alive until Ctrl-C

@@ -2062,6 +2062,42 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1.5;
 }
 
+/* Mini mockup of the username field shown in the Setup Guide step */
+.setup-username-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.setup-username-demo-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.setup-username-demo-input {
+  font-size: 0.80rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
+
+/* The "done" step (last step in the setup guide) uses a green circle */
+#setup-view .session-step:last-child .session-step-num {
+  background: var(--win);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.30);
+}
+
 /* ── Troubleshooting ────────────────────────────────────────────────────────── */
 
 .setup-trouble {
@@ -2339,8 +2375,48 @@ button { font-family: inherit; cursor: pointer; }
 #capture-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+#capture-username-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+#capture-username-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+#capture-username-input {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  width: 160px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#capture-username-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+#capture-username-input::placeholder {
+  color: var(--text-3);
+  font-weight: 400;
 }
 
 .capture-status {
