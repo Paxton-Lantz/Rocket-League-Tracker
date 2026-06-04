@@ -278,9 +278,11 @@ function setRankElements(iconId, nameId, mmr) {
 // ============================================================
 
 // localStorage keys — never change these or you'll lose your data
-const STORAGE_KEY        = "rl_games";     // individual game records
-const SESSIONS_KEY       = "rl_sessions";  // completed session records
-const ACTIVE_SESSION_KEY = "rl_active_session"; // the current in-progress session
+const STORAGE_KEY        = "rl_games";           // individual game records
+const SESSIONS_KEY       = "rl_sessions";         // completed session records
+const ACTIVE_SESSION_KEY = "rl_active_session";   // the current in-progress session
+const ACTIVE_SEASON_KEY  = "rl_active_season";    // the current season number
+const GOAL_KEY           = "rl_rank_goal";        // saved rank goal target
 
 // How many games must pass between coaching alerts (prevents spam)
 const MIN_GAMES_BETWEEN_ALERTS = 5;
@@ -949,11 +951,16 @@ let games         = [];   // all individual game records
 let sessions      = [];   // completed session records (each ends with a final MMR)
 let activeSession = null; // the current in-progress session, or null if none
 let activeMode    = "3v3"; // the currently selected game mode tab
+let activeSeason  = 22;   // current season number (default: season 22)
 
 let inSessionChart    = null; // Chart.js object for the in-session MMR chart
 let longTermChart     = null; // Chart.js object for the long-term MMR chart
-let sessionHoverChart = null; // Chart.js object for the session card hover popup
+let sessionHoverChart = null; // Chart.js object for the session/season card hover popup
 let sessionHoverTimer = null; // delay timer before the hover popup appears
+let seasonHoverTimer  = null; // separate delay timer for season card hovers
+
+let rankGoalTarget = null;  // saved target rank name, e.g. "Diamond I"
+let goalVisible    = false; // whether the rank goal panel is expanded
 
 // Tilt warning state
 let tiltDismissed = false;
@@ -1029,7 +1036,8 @@ function loadGames() {
   var loaded = raw ? JSON.parse(raw) : [];
   var dirty = false;
   loaded.forEach(function(g) {
-    if (!g.mode) { g.mode = "3v3"; dirty = true; }
+    if (!g.mode)   { g.mode   = "3v3"; dirty = true; }
+    if (!g.season) { g.season = 22;    dirty = true; }
     // Every win is an MVP — back-fill historical data
     if (g.result === "W" && g.mvp !== true) { g.mvp = true; dirty = true; }
     // Losses can never be MVP
@@ -1041,6 +1049,7 @@ function loadGames() {
 
 function saveGames() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
+  flushToFile();
 }
 
 
@@ -1057,6 +1066,7 @@ function loadSessions() {
 
 function saveSessions() {
   localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  flushToFile();
 }
 
 
@@ -1076,10 +1086,36 @@ function loadActiveSession() {
 
 function saveActiveSession() {
   localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(activeSession));
+  flushToFile();
 }
 
 function clearActiveSession() {
   localStorage.removeItem(ACTIVE_SESSION_KEY);
+  flushToFile();
+}
+
+
+// ============================================================
+// STORAGE — season + goal
+// ============================================================
+
+function loadActiveSeason() {
+  var stored = localStorage.getItem(ACTIVE_SEASON_KEY);
+  return stored ? parseInt(stored, 10) : 22;
+}
+
+function saveActiveSeason() {
+  localStorage.setItem(ACTIVE_SEASON_KEY, String(activeSeason));
+  flushToFile();
+}
+
+function loadGoal() {
+  return localStorage.getItem(GOAL_KEY) || null;
+}
+
+function saveGoal(rankName) {
+  if (rankName) localStorage.setItem(GOAL_KEY, rankName);
+  else          localStorage.removeItem(GOAL_KEY);
 }
 
 // Returns games filtered to the currently selected mode tab.
@@ -1216,6 +1252,8 @@ function endSession() {
   document.getElementById("start-mmr-input").value = endMmr;
 
   updateLongTermChart();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updateRankHero();
   showStartSessionUI();
@@ -2492,6 +2530,7 @@ function updateGameLog() {
 
     row.appendChild(makeCell(gameNumber));
     row.appendChild(makeCell(game.date));
+    row.appendChild(makeCell(game.season != null ? "S" + game.season : "—", "season-cell"));
     row.appendChild(makeCell(mmrDisplay, mmrClass));
     row.appendChild(makeResultCell(game.result));
     row.appendChild(makeOppCell(game.opponentMmr != null ? game.opponentMmr : null));
@@ -2525,6 +2564,8 @@ function handleDelete(gameId) {
   updateSessionHeader();
   updateStatsDashboard();
   updatePerformanceSection();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updateGameLog();
 }
@@ -2534,6 +2575,8 @@ function handleDeleteSession(sessionId) {
   sessions = sessions.filter(function(s) { return s.sessionId !== sessionId; });
   saveSessions();
   updateLongTermChart();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updatePerformanceSection();
   updateRankHero();
@@ -2876,6 +2919,242 @@ function hideSessionHoverChart() {
 
 
 // ============================================================
+// SEASON TRACKING
+// Groups games by season number. Shows current-season totals
+// and a list of past seasons with hover charts.
+// ============================================================
+
+function updateSeasonSection() {
+  var heading   = document.getElementById("season-heading");
+  var mmrChip   = document.getElementById("season-mmr-chip");
+  var recordBar = document.getElementById("season-record-bar");
+  var pastList  = document.getElementById("past-season-list");
+  var noMsg     = document.getElementById("no-past-seasons-msg");
+  if (!heading) return;
+
+  var mg = getModeGames();
+  var curGames = mg.filter(function(g) { return g.season === activeSeason; });
+  var totalMmr = curGames.reduce(function(sum, g) { return sum + (g.mmrChange || 0); }, 0);
+  var wins     = curGames.filter(function(g) { return g.result === "W"; }).length;
+  var losses   = curGames.filter(function(g) { return g.result === "L"; }).length;
+
+  heading.textContent = "Season " + activeSeason;
+  mmrChip.textContent = (totalMmr >= 0 ? "+" : "") + totalMmr + " MMR this season";
+  mmrChip.className   = "season-mmr-chip" + (totalMmr > 0 ? " positive" : totalMmr < 0 ? " negative" : "");
+  recordBar.textContent = wins + "W – " + losses + "L · " + curGames.length + " games";
+
+  // Past seasons (all season numbers seen in games, excluding current)
+  var allSeasons = [];
+  mg.forEach(function(g) { if (allSeasons.indexOf(g.season) === -1) allSeasons.push(g.season); });
+  allSeasons.sort(function(a, b) { return b - a; });
+  var pastSeasons = allSeasons.filter(function(s) { return s !== activeSeason; });
+
+  pastList.textContent = "";
+  if (pastSeasons.length === 0) {
+    noMsg.style.display = "block";
+    return;
+  }
+  noMsg.style.display = "none";
+
+  pastSeasons.forEach(function(seasonNum) {
+    var sg  = mg.filter(function(g) { return g.season === seasonNum; });
+    var net = sg.reduce(function(sum, g) { return sum + (g.mmrChange || 0); }, 0);
+    var w   = sg.filter(function(g) { return g.result === "W"; }).length;
+    var l   = sg.filter(function(g) { return g.result === "L"; }).length;
+
+    var card = document.createElement("div");
+    card.className = "season-card";
+
+    var left = document.createElement("span");
+    left.className   = "season-card-title";
+    left.textContent = "Season " + seasonNum;
+
+    var mid = document.createElement("span");
+    mid.className   = "season-card-record";
+    mid.textContent = w + "W – " + l + "L · " + sg.length + " games";
+
+    var right = document.createElement("span");
+    right.className   = "season-card-net" + (net > 0 ? " positive" : net < 0 ? " negative" : "");
+    right.textContent = (net >= 0 ? "+" : "") + net + " MMR";
+
+    card.appendChild(left);
+    card.appendChild(mid);
+    card.appendChild(right);
+
+    card.addEventListener("mouseenter", function() {
+      clearTimeout(seasonHoverTimer);
+      seasonHoverTimer = setTimeout(function() {
+        showSeasonHoverChart(seasonNum, "Season " + seasonNum, card);
+      }, 320);
+    });
+    card.addEventListener("mouseleave", function() {
+      clearTimeout(seasonHoverTimer);
+      hideSessionHoverChart();
+    });
+
+    pastList.appendChild(card);
+  });
+}
+
+// Reuses the session hover popup to show a cumulative MMR chart for a whole season.
+function showSeasonHoverChart(seasonNum, label, anchorEl) {
+  var popup    = document.getElementById("session-hover-popup");
+  var titleEl  = document.getElementById("session-hover-title");
+  var netEl    = document.getElementById("session-hover-net");
+  var recordEl = document.getElementById("session-hover-record");
+  var canvas   = document.getElementById("session-hover-canvas");
+
+  var sg = getModeGames()
+    .filter(function(g) { return g.season === seasonNum; })
+    .sort(function(a, b) { return a.id - b.id; });
+  if (sg.length === 0) return;
+
+  var cumulative = 0;
+  var data = [0], labels = [""];
+  sg.forEach(function(g) {
+    cumulative += (g.mmrChange || 0);
+    data.push(cumulative);
+    labels.push("");
+  });
+
+  var net        = cumulative;
+  var isPositive = net > 0;
+  var lineColor  = isPositive ? "#22c55e" : net < 0 ? "#ef4444" : "#888";
+  var wins       = sg.filter(function(g) { return g.result === "W"; }).length;
+  var losses     = sg.filter(function(g) { return g.result === "L"; }).length;
+
+  titleEl.textContent  = label;
+  netEl.textContent    = (net >= 0 ? "+" : "") + net + " MMR";
+  netEl.style.color    = lineColor;
+  recordEl.textContent = wins + "W – " + losses + "L · " + sg.length + " games";
+
+  if (sessionHoverChart) { sessionHoverChart.destroy(); sessionHoverChart = null; }
+
+  var ctx      = canvas.getContext("2d");
+  var gradient = ctx.createLinearGradient(0, 0, 0, 120);
+  if (isPositive) {
+    gradient.addColorStop(0, "rgba(34,197,94,0.28)");
+    gradient.addColorStop(1, "rgba(34,197,94,0)");
+  } else if (net < 0) {
+    gradient.addColorStop(0, "rgba(239,68,68,0.28)");
+    gradient.addColorStop(1, "rgba(239,68,68,0)");
+  } else {
+    gradient.addColorStop(0, "rgba(148,163,184,0.15)");
+    gradient.addColorStop(1, "rgba(148,163,184,0)");
+  }
+
+  var cs        = getComputedStyle(document.documentElement);
+  var textColor = cs.getPropertyValue("--text-3").trim() || "#888";
+  var gridColor = cs.getPropertyValue("--border").trim()  || "rgba(0,0,0,0.06)";
+
+  var zeroLine = {
+    id: "zeroLine",
+    afterDraw: function(chart) {
+      var yScale = chart.scales.y;
+      if (yScale.min > 0 || yScale.max < 0) return;
+      var y = yScale.getPixelForValue(0), area = chart.chartArea, c = chart.ctx;
+      c.save(); c.beginPath(); c.setLineDash([4,4]);
+      c.lineWidth = 1; c.strokeStyle = "rgba(148,163,184,0.4)";
+      c.moveTo(area.left, y); c.lineTo(area.right, y); c.stroke(); c.restore();
+    }
+  };
+
+  sessionHoverChart = new Chart(ctx, {
+    type: "line",
+    data: { labels: labels, datasets: [{ data: data, fill: true, cubicInterpolationMode: "monotone", borderColor: lineColor, backgroundColor: gradient, pointRadius: 0, borderWidth: 2.5 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 250, easing: "easeOutQuart" },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { display: false }, border: { display: false } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 9 }, maxTicksLimit: 4 }, border: { display: false } }
+      }
+    },
+    plugins: [zeroLine]
+  });
+
+  var rect   = anchorEl.getBoundingClientRect();
+  var popupH = 175;
+  var top    = rect.top - popupH - 10;
+  if (top < 8) top = rect.bottom + 10;
+  var left   = rect.left;
+  if (left + 300 > window.innerWidth - 8) left = window.innerWidth - 308;
+  popup.style.top  = top  + "px";
+  popup.style.left = left + "px";
+  popup.classList.add("visible");
+}
+
+
+// ============================================================
+// RANK GOAL & TRAJECTORY
+// User sets a target rank; the app projects how many games
+// it will take based on average MMR change over recent games.
+// ============================================================
+
+function updateGoalSection() {
+  var panel      = document.getElementById("goal-panel");
+  var projection = document.getElementById("goal-projection");
+  var btn        = document.getElementById("goal-toggle-btn");
+  if (!panel) return;
+
+  if (!goalVisible) {
+    panel.style.display = "none";
+    if (btn) btn.textContent = "Set Goal ▾";
+    return;
+  }
+
+  panel.style.display = "";
+  if (btn) btn.textContent = "Hide ▴";
+
+  var select = document.getElementById("goal-rank-select");
+  if (!select || !select.value) { projection.textContent = "Pick a target rank above."; return; }
+
+  var currentMmr = null;
+  // currentMmr is the running session MMR if a session is active, or the last recorded MMR
+  var mg = getModeGames();
+  if (mg.length > 0) {
+    // Sum all mmrChanges — that gives us total relative MMR. We need the actual MMR.
+    // Use activeSession.startMmr + session net if in a session, else last session's endMmr.
+    if (activeSession) {
+      currentMmr = getCurrentMmr();
+    } else {
+      // Find the most recent session for this mode
+      var ms = getModeSessions();
+      if (ms.length > 0) currentMmr = ms[ms.length - 1].endMmr;
+    }
+  }
+
+  if (currentMmr === null) { projection.textContent = "Log at least one session to see a projection."; return; }
+
+  var targetEntry = RANK_THRESHOLDS.find(function(r) { return r.name === select.value; });
+  if (!targetEntry) return;
+  var mmrNeeded = targetEntry.mmr - currentMmr;
+
+  // Average MMR change over last 20 games
+  var recent = mg.slice(-20);
+  if (recent.length < 3) { projection.textContent = "Log at least 3 games to see a projection."; return; }
+  var avgChange = recent.reduce(function(sum, g) { return sum + (g.mmrChange || 0); }, 0) / recent.length;
+
+  if (mmrNeeded <= 0) {
+    projection.innerHTML = "<span class='goal-achieved'>You’ve reached or passed this rank!</span>";
+    return;
+  }
+
+  if (avgChange <= 0) {
+    projection.innerHTML = "Avg <strong>" + avgChange.toFixed(1) + " MMR/game</strong> over last " + recent.length + " games — <span class='goal-trend-neg'>currently trending away from this goal.</span>";
+    return;
+  }
+
+  var gamesNeeded    = Math.ceil(mmrNeeded / avgChange);
+  var sessionsNeeded = Math.ceil(gamesNeeded / 7);
+  projection.innerHTML =
+    "Avg <strong>+" + avgChange.toFixed(1) + " MMR/game</strong> over last " + recent.length + " games &rarr; " +
+    "<strong>~" + gamesNeeded + " games</strong> (~" + sessionsNeeded + " sessions) to reach <strong>" + select.value + "</strong>.";
+}
+
+
+// ============================================================
 // SESSION LOG
 // Shows completed sessions (from the `sessions` array),
 // with game stats pulled from the matching games in `games`.
@@ -3089,6 +3368,7 @@ function handleFormSubmit(e) {
     date:        new Date().toISOString().split("T")[0],
     sessionId:   activeSession.sessionId,
     mode:        activeSession.mode,
+    season:      activeSeason,
     mmrChange:   mmrChange,
     result:      result,
     goals:       parseInt(document.getElementById("goals-input").value)   || 0,
@@ -3114,6 +3394,8 @@ function handleFormSubmit(e) {
   updateInSessionChart();
   updateStatsDashboard();
   updatePerformanceSection();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updateGameLog();
   updateConceptLibrary();
@@ -3199,6 +3481,8 @@ function setActiveMode(mode) {
   updateStatsDashboard();
   updatePerformanceSection();
   updateRankHero();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updateGameLog();
 }
@@ -3378,11 +3662,177 @@ function initMiniMode() {
   document.addEventListener("mouseup", function() { dragging = false; });
 }
 
+
+// ============================================================
+// FILE STORAGE
+// Mirrors all data to a .json file on disk via the File System
+// Access API (Chrome/Edge). The file handle is persisted in
+// IndexedDB so the browser doesn't re-prompt on every page load.
+// Falls back silently to localStorage-only if the API is absent.
+// ============================================================
+
+var saveFileHandle = null; // FileSystemFileHandle, set once connected
+
+// --- IndexedDB helpers (persist the file handle between sessions) ---
+
+function _openHandleDb() {
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open("rl_tracker_meta", 1);
+    req.onupgradeneeded = function(e) { e.target.result.createObjectStore("handles"); };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror   = function(e) { reject(e); };
+  });
+}
+
+function _storeHandle(handle) {
+  return _openHandleDb().then(function(db) {
+    return new Promise(function(resolve) {
+      var tx = db.transaction("handles", "readwrite");
+      tx.objectStore("handles").put(handle, "save");
+      tx.oncomplete = resolve;
+    });
+  });
+}
+
+function _loadHandle() {
+  return _openHandleDb().then(function(db) {
+    return new Promise(function(resolve) {
+      var req = db.transaction("handles").objectStore("handles").get("save");
+      req.onsuccess = function(e) { resolve(e.target.result || null); };
+      req.onerror   = function()  { resolve(null); };
+    });
+  }).catch(function() { return null; });
+}
+
+// --- File read / write ---
+
+// Writes games + sessions + activeSession to the save file (non-blocking).
+function flushToFile() {
+  if (!saveFileHandle) return;
+  var payload = JSON.stringify({
+    games:         games,
+    sessions:      sessions,
+    activeSession: activeSession,
+    activeSeason:  activeSeason
+  }, null, 2);
+  saveFileHandle.createWritable()
+    .then(function(w) { return w.write(payload).then(function() { return w.close(); }); })
+    .catch(function(err) { console.warn("[file-storage] write failed:", err); });
+}
+
+function _readFileData(handle) {
+  return handle.getFile()
+    .then(function(f) { return f.text(); })
+    .then(function(text) {
+      if (!text.trim()) return null;
+      return JSON.parse(text);
+    });
+}
+
+// Restores localStorage from file data, then reloads to apply it cleanly.
+function _restoreAndReload(data) {
+  if (data.games)         localStorage.setItem(STORAGE_KEY,        JSON.stringify(data.games));
+  if (data.sessions)      localStorage.setItem(SESSIONS_KEY,       JSON.stringify(data.sessions));
+  if (data.activeSession) localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(data.activeSession));
+  if (data.activeSeason)  localStorage.setItem(ACTIVE_SEASON_KEY,  String(data.activeSeason));
+  window.location.reload();
+}
+
+// --- UI pill ---
+
+function updateFilePill(state, clickHandler) {
+  var pill = document.getElementById("file-pill");
+  if (!pill) return;
+  pill.onclick = clickHandler || null;
+  if (state === "connected") {
+    pill.textContent = "Save file ✓";
+    pill.title       = "Data is saving to your file automatically";
+    pill.className   = "file-pill connected";
+  } else if (state === "reconnect") {
+    pill.textContent = "Reconnect save file";
+    pill.title       = "Click to restore access to your save file";
+    pill.className   = "file-pill reconnect";
+  } else {
+    pill.textContent = "Choose save file";
+    pill.title       = "Pick a file on disk — your data survives cache clears";
+    pill.className   = "file-pill";
+  }
+}
+
+// --- Connection flow ---
+
+// User-initiated: pick a new or existing .json save file.
+function connectSaveFile() {
+  if (!window.showSaveFilePicker) return;
+  window.showSaveFilePicker({
+    suggestedName: "rl-tracker-data.json",
+    types: [{ description: "JSON Data", accept: { "application/json": [".json"] } }]
+  }).then(function(handle) {
+    return _readFileData(handle).then(function(data) {
+      saveFileHandle = handle;
+      return _storeHandle(handle).then(function() {
+        if (data && (data.games || data.sessions)) {
+          // File already has data — restore it and reload
+          _restoreAndReload(data);
+        } else {
+          // New empty file — write current data into it
+          flushToFile();
+          updateFilePill("connected");
+        }
+      });
+    });
+  }).catch(function(err) {
+    if (err.name !== "AbortError") console.warn("[file-storage] pick failed:", err);
+  });
+}
+
+// Called on startup: silently reconnects if permission is already granted.
+function tryAutoConnect() {
+  if (!window.showSaveFilePicker) return;
+  _loadHandle().then(function(handle) {
+    if (!handle) { updateFilePill("none", connectSaveFile); return; }
+    handle.queryPermission({ mode: "readwrite" }).then(function(state) {
+      if (state === "granted") {
+        saveFileHandle = handle;
+        // If localStorage is empty but the file has data, restore it
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          _readFileData(handle).then(function(data) {
+            if (data) _restoreAndReload(data);
+            else updateFilePill("connected");
+          });
+        } else {
+          updateFilePill("connected");
+        }
+      } else {
+        // Permission needs a user gesture — show the reconnect button
+        updateFilePill("reconnect", function() {
+          handle.requestPermission({ mode: "readwrite" }).then(function(s) {
+            if (s === "granted") {
+              saveFileHandle = handle;
+              if (!localStorage.getItem(STORAGE_KEY)) {
+                _readFileData(handle).then(function(data) {
+                  if (data) _restoreAndReload(data);
+                  else { flushToFile(); updateFilePill("connected"); }
+                });
+              } else {
+                flushToFile();
+                updateFilePill("connected");
+              }
+            }
+          }).catch(function() {});
+        });
+      }
+    });
+  });
+}
+
+
 function init() {
   // Load all persisted data
   games         = loadGames();
   sessions      = loadSessions();
   activeSession = loadActiveSession();
+  activeSeason  = loadActiveSeason();
 
   // Load saved mode (must happen after data loads so getModeGames works)
   activeMode = localStorage.getItem("rl_active_mode") || "3v3";
@@ -3504,6 +3954,35 @@ function init() {
   // Wire up buttons
   document.getElementById("start-session-btn").addEventListener("click", startSession);
 
+  // New Season button — increments season number, tags future games with it
+  document.getElementById("new-season-btn").addEventListener("click", function() {
+    if (!confirm("Start Season " + (activeSeason + 1) + "?\n\nFuture games will be tagged with the new season. Past games stay in Season " + activeSeason + ".")) return;
+    activeSeason++;
+    saveActiveSeason();
+    updateSeasonSection();
+  });
+
+  // Rank goal: build dropdown, restore saved value, wire toggle + select
+  var goalSelect = document.getElementById("goal-rank-select");
+  RANK_THRESHOLDS.forEach(function(r) {
+    var opt = document.createElement("option");
+    opt.value = r.name;
+    opt.textContent = r.name;
+    goalSelect.appendChild(opt);
+  });
+  rankGoalTarget = loadGoal();
+  if (rankGoalTarget) goalSelect.value = rankGoalTarget;
+
+  document.getElementById("goal-toggle-btn").addEventListener("click", function() {
+    goalVisible = !goalVisible;
+    updateGoalSection();
+  });
+  goalSelect.addEventListener("change", function() {
+    rankGoalTarget = this.value;
+    saveGoal(rankGoalTarget);
+    updateGoalSection();
+  });
+
   // Build the rank icon strip
   buildRankStrip();
 
@@ -3618,8 +4097,11 @@ function init() {
   updateStatsDashboard();
   updatePerformanceSection();
   updateRankHero();
+  updateSeasonSection();
+  updateGoalSection();
   updateSessionLog();
   updateGameLog();
+  tryAutoConnect();
 }
 
 document.addEventListener("DOMContentLoaded", init);

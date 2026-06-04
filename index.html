@@ -71,6 +71,7 @@
           <button id="reset-colors-btn">Reset to default</button>
         </div>
       </div>
+      <button id="file-pill" class="file-pill" title="Pick a file on disk — your data survives cache clears">Choose save file</button>
       <button id="minimize-btn" title="Minimize to widget">⊟</button>
     </header>
 
@@ -184,6 +185,25 @@
         </div>
       </div>
 
+    </section>
+
+    <!-- =============================================
+         RANK GOAL + TRAJECTORY
+         User sets a target rank; projection updates
+         after every game. Toggleable.
+    ============================================= -->
+    <section id="goal-section">
+      <div id="goal-header-row">
+        <h2>Rank Goal</h2>
+        <button id="goal-toggle-btn">Set Goal ▾</button>
+      </div>
+      <div id="goal-panel" style="display:none">
+        <div id="goal-pick-row">
+          <label for="goal-rank-select">Target rank</label>
+          <select id="goal-rank-select"></select>
+        </div>
+        <div id="goal-projection"></div>
+      </div>
     </section>
 
     <!-- =============================================
@@ -449,6 +469,25 @@
     </section>
 
     <!-- =============================================
+         SEASON TRACKING
+         Groups all games by season. Shows current-season
+         totals and a hoverable list of past seasons.
+    ============================================= -->
+    <section id="season-section">
+      <div id="season-top-bar">
+        <h2 id="season-heading">Season 22</h2>
+        <span id="season-mmr-chip" class="season-mmr-chip">0 MMR this season</span>
+        <button id="new-season-btn">New Season</button>
+      </div>
+      <div id="season-record-bar"></div>
+      <div id="past-seasons-area">
+        <p class="section-sublabel">Past Seasons</p>
+        <p id="no-past-seasons-msg">No past seasons yet. Click "New Season" after a season ends.</p>
+        <div id="past-season-list"></div>
+      </div>
+    </section>
+
+    <!-- =============================================
          SESSION LOG
          One card per completed session, newest first.
          Populated when you click End Session.
@@ -484,6 +523,7 @@
           <tr>
             <th>#</th>
             <th>Date</th>
+            <th>Season</th>
             <th>MMR ±</th>
             <th>Result</th>
             <th>Top Opp</th>
