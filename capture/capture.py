@@ -167,10 +167,42 @@ def find_header_positions(words):
 
 
 def find_username_row(words, username):
+    """
+    Find the scoreboard row containing the player's username.
+
+    First tries matching the username against individual OCR words (fast path).
+    If that fails, groups all words into rows by y-position and checks the full
+    joined text of each row — this handles club tags like [RKTG] that appear as
+    a separate token before the name, or cases where OCR merges tag+name into
+    one token like "[RKTG]PlayerName".
+    """
+    # Fast path: username appears as a substring of a single OCR word
     for i, word in enumerate(words["text"]):
         if word and username in word.lower():
             row_y = words["top"][i] + words["height"][i] // 2
             return row_y, words["left"][i]
+
+    # Slow path: group words by row (quantized to 20px buckets) and check
+    # the full joined line — catches club-tag prefixes and OCR merges
+    rows = {}  # row_key -> list of (left, mid_y, text) tuples
+    for i, word in enumerate(words["text"]):
+        if not word or not word.strip():
+            continue
+        mid_y   = words["top"][i] + words["height"][i] // 2
+        row_key = round(mid_y / 20) * 20
+        rows.setdefault(row_key, []).append((words["left"][i], mid_y, word))
+
+    for row_key, tokens in sorted(rows.items()):
+        tokens.sort(key=lambda t: t[0])  # left-to-right
+        line = " ".join(t[2] for t in tokens).lower()
+        if username in line:
+            # Return the y and the x of the word that holds the username,
+            # or the leftmost word of the row as a fallback
+            for left, mid_y, word in tokens:
+                if username in word.lower():
+                    return mid_y, left
+            return tokens[0][1], tokens[0][0]
+
     return None, None
 
 
@@ -283,7 +315,8 @@ def extract_stats(img_pil, words, username):
 
     row_y, username_x = find_username_row(words, username)
     if row_y is None:
-        log(f"  Username '{username}' not found on screen")
+        all_words = sorted(set(w for w in words["text"] if w and w.strip()))
+        log(f"  Username '{username}' not found. All OCR words: {all_words}")
         return None
 
     stats = {}

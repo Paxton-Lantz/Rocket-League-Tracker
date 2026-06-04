@@ -102,6 +102,32 @@
 
 ---
 
+## 2026-06-03
+
+### What we worked on today
+
+**Capture Daemon Setup**
+- Installed Python 3.12, Tesseract 5.4.0, and all Python packages (`mss`, `pytesseract`, `opencv-python`, `Pillow`, `pystray`) via winget/pip
+- Installed Git and confirmed remote is `Paxton-Lantz/Rocket-League-Tracker` on GitHub
+
+**capture.py fixes**
+- `find_username_row`: added a slow-path fallback that groups OCR words by row (20px buckets), joins the full line of text, and checks if the username appears anywhere in it — handles club tags like `[TAG]SaxyPaxy` whether OCR merges them into one token or reads them separately
+- When username is not found, now logs all OCR words to the terminal so we can see exactly what the screen capture is reading — useful for diagnosing mismatches
+- `extract_stats`: debug log now prints every OCR word found when username matching fails
+
+**config.json**
+- Set `username` to `SaxyPaxy` (was placeholder `YourUsernameHere`) so the daemon works from startup without needing the browser to send it first
+
+**start.bat**
+- Updated to use full Python path (`C:\Users\paxto\AppData\Local\Programs\Python\Python312\python.exe`) since Python wasn't on system PATH yet
+
+### Still investigating
+- Username `SaxyPaxy` is still not being found on the scoreboard — OCR word dump not yet captured
+- Suspected cause: in-game club tag or title badge beneath the name is confusing the row detection
+- Next step: restart daemon, play a game, and paste the full OCR word list from the terminal
+
+---
+
 ## To-Do
 
 - [ ] MMR range filter for stats dashboard
