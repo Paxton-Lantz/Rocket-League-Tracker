@@ -121,6 +121,30 @@
 **start.bat**
 - Updated to use full Python path (`C:\Users\paxto\AppData\Local\Programs\Python\Python312\python.exe`) since Python wasn't on system PATH yet
 
+### For next session — read this first
+
+**The capture daemon is built and mostly working. One bug remains: it can't find "SaxyPaxy" on the scoreboard.**
+
+Here is exactly where we left off and what to do:
+
+1. The daemon (`capture/capture.py`) watches the screen for the RL end-of-game scoreboard, reads stats via OCR, and serves them to the browser at `localhost:7891/latest`. The browser (`app.js`) polls that endpoint and auto-fills the log form. The user just hits Enter to confirm.
+
+2. The end screen IS being detected (brightness check passes). Column headers (GOALS, ASSISTS, SAVES, SHOTS) ARE being found. But `SaxyPaxy` is NOT being found — the log says "username not found on scoreboard." Opponent MMR was found correctly, which confirms OCR is working.
+
+3. The suspected cause is that the in-game name shows as `[***]SaxyPaxy` with a club tag, and there is also a small title/badge beneath the name. OCR might be misreading or merging these.
+
+4. **The debug code is already in place.** When the username fails to match, `capture.py` now logs every word OCR read from the screen. The user just needs to:
+   - Open Rocket League
+   - Double-click `capture/start.bat` to start the daemon
+   - Make sure `index.html` is open in the browser with Epic Username set to `SaxyPaxy` (no space) in the Setup tab
+   - Play one game
+   - When the end screen shows and "username not found" appears in the terminal, scroll up and copy the line that starts with `All OCR words: [...]`
+   - Paste it here so you can see exactly what the OCR is reading and fix the matching
+
+5. Once you have the OCR word list, update `find_username_row` in `capture.py` to match whatever text is actually on screen.
+
+6. Python is at `C:\Users\paxto\AppData\Local\Programs\Python\Python312\python.exe` (not on system PATH yet). Git is installed. Remote is `Paxton-Lantz/Rocket-League-Tracker` on GitHub.
+
 ### Still investigating
 - Username `SaxyPaxy` is still not being found on the scoreboard — OCR word dump not yet captured
 - Suspected cause: in-game club tag or title badge beneath the name is confusing the row detection
