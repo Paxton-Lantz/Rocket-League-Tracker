@@ -1364,8 +1364,18 @@ const CAPTURE_PORT = 7891;
 // Start polling — called automatically when a session begins.
 function startCapturePolling() {
   if (capturePollingInterval) return; // already running
+  pollCapture(); // fire immediately so stats captured before session starts apply right away
   capturePollingInterval = setInterval(pollCapture, 2000);
 }
+
+// When the user alt-tabs back from Rocket League, the browser may have throttled
+// the setInterval to 30+ seconds. Fire a poll the moment the tab is visible again
+// so stats appear instantly instead of waiting for the next delayed tick.
+document.addEventListener("visibilitychange", function() {
+  if (document.visibilityState === "visible" && capturePollingInterval) {
+    pollCapture();
+  }
+});
 
 // Stop polling — called automatically when a session ends.
 function stopCapturePolling() {

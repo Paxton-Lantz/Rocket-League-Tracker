@@ -74,7 +74,7 @@ except (FileNotFoundError, json.JSONDecodeError):
 
 PORT                 = _cfg.get("port", 7891)
 MONITOR              = _cfg.get("monitor", 1)
-BRIGHTNESS_THRESHOLD = _cfg.get("brightness_threshold", 70)
+BRIGHTNESS_THRESHOLD = _cfg.get("brightness_threshold", 110)
 
 # ── Username (set by tracker browser via query param) ─────────────────────────
 # The tracker passes ?username=YourName on every poll request.
@@ -114,7 +114,7 @@ _latest = {
 # ── Screen capture ────────────────────────────────────────────────────────────
 
 def grab_screen():
-    with mss.mss() as sct:
+    with mss.MSS() as sct:
         monitor = sct.monitors[MONITOR]
         shot    = sct.grab(monitor)
         return Image.frombytes("RGB", shot.size, shot.rgb)
@@ -129,64 +129,144 @@ def is_dark_enough_for_ocr(img):
     """
     Fast pre-check before running Tesseract. The RL end screen darkens the
     background significantly vs. active gameplay. Crops the scoreboard region,
-    downsamples to 8x4 px, checks average brightness. Returns True if dark
-    enough to be worth running OCR.
+    downsamples to 8x4 px, checks average brightness.
+
+    Returns (passed: bool, avg_brightness: float).
+    The caller uses avg_brightness in diagnostic log messages.
     """
     w, h   = img.size
     region = img.crop((int(w * 0.40), int(h * 0.15), int(w * 0.90), int(h * 0.30)))
     thumb  = region.resize((8, 4), Image.LANCZOS).convert("L")
-    pixels = list(thumb.getdata())
-    avg    = sum(pixels) / len(pixels)
-    return avg < BRIGHTNESS_THRESHOLD
+    avg    = float(np.mean(np.array(thumb)))
+    return avg < BRIGHTNESS_THRESHOLD, avg
 
 # ── OCR helpers ───────────────────────────────────────────────────────────────
 
-REQUIRED_HEADERS = {"GOALS", "ASSISTS", "SAVES", "SHOTS"}
+# Headers required to declare "this is the end screen". ASSISTS is intentionally
+# excluded because 1v1 scoreboards don't have an ASSISTS column — requiring it
+# would block detection entirely in solo queue.
+REQUIRED_HEADERS = {"GOALS", "SAVES", "SHOTS"}
+
+# Full stat header set used when extracting column positions. ASSISTS may or
+# may not be present depending on game mode; callers handle its absence.
+_ALL_HEADERS = {"GOALS", "ASSISTS", "SAVES", "SHOTS"}
 
 def run_ocr(img):
     return pytesseract.image_to_data(img, output_type=Output.DICT)
 
 
-def is_end_screen(words):
+def _find_headers(words):
+    """
+    Returns the set of REQUIRED_HEADERS that OCR found (confidence >= 30).
+    Threshold lowered from 50 so that RL's stylised scoreboard font scores
+    reliably even when Tesseract is less certain about individual characters.
+    """
     found = set()
     for i, word in enumerate(words["text"]):
-        if word and int(words["conf"][i]) > 50 and word.upper() in REQUIRED_HEADERS:
+        if word and int(words["conf"][i]) > 30 and word.upper() in REQUIRED_HEADERS:
             found.add(word.upper())
-    return found >= REQUIRED_HEADERS
+    return found
+
+def is_end_screen(words):
+    return _find_headers(words) >= REQUIRED_HEADERS
 
 
 def find_header_positions(words):
     cols = {}
     for i, word in enumerate(words["text"]):
         w = word.upper() if word else ""
-        if w in REQUIRED_HEADERS and int(words["conf"][i]) > 50:
+        if w in _ALL_HEADERS and int(words["conf"][i]) > 30:
             if w not in cols:
                 cx = words["left"][i] + words["width"][i] // 2
                 cols[w] = cx
     return cols
 
 
-def find_username_row(words, username):
+def _edit_distance(a, b):
+    """Levenshtein distance — counts substitutions, insertions, and deletions."""
+    if a == b:
+        return 0
+    m, n = len(a), len(b)
+    if m < n:
+        a, b, m, n = b, a, n, m
+    row = list(range(n + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            temp = row[j]
+            row[j] = prev if ca == cb else 1 + min(prev, row[j], row[j - 1])
+            prev = temp
+    return row[n]
+
+
+def _strip_club_tag(text):
+    """Remove a leading [CLUB] tag that Rocket League prepends to player names."""
+    return re.sub(r'^\[.*?\]\s*', '', text)
+
+
+def _username_matches(text, username):
+    """
+    True if text contains or closely resembles username.
+
+    Strips any leading club tag (e.g. [***], [NUT]) before matching so
+    a name like '[***]SaxyPaxy' is treated the same as 'SaxyPaxy'.
+
+    Allows up to 40% of the username length in total edits (substitutions,
+    insertions, deletions). For an 8-character name like SaxyPaxy that's 3
+    edits, so 'SexyPex' (2 subs + 1 deletion) still matches. Since the
+    username is unique, false positives against other players are extremely
+    unlikely.
+    """
+    tl = _strip_club_tag(text.lower())
+    if username in tl:
+        return True
+    n = len(username)
+    max_dist = max(2, round(n * 0.4))  # 3 for an 8-char name
+
+    # Short string (individual OCR token): compare directly
+    if len(tl) <= n + max_dist:
+        return _edit_distance(username, tl) <= max_dist
+
+    # Longer string (joined row): slide windows of varying length to find the best match
+    for wlen in range(max(n - max_dist, 4), n + max_dist + 1):
+        for start in range(len(tl) - wlen + 1):
+            if _edit_distance(username, tl[start:start + wlen]) <= max_dist:
+                return True
+    return False
+
+
+def find_username_row(words, username, img_width=0, img_height=0):
     """
     Find the scoreboard row containing the player's username.
 
-    First tries matching the username against individual OCR words (fast path).
-    If that fails, groups all words into rows by y-position and checks the full
-    joined text of each row — this handles club tags like [RKTG] that appear as
-    a separate token before the name, or cases where OCR merges tag+name into
-    one token like "[RKTG]PlayerName".
+    The bottom-left name card (e.g. '[***] SaxyPaxy') is excluded by
+    requiring that a token be BOTH in the left 35% AND the bottom 30% of
+    the screen before skipping it. Scoreboard rows sit in the upper portion
+    of the screen so they are never filtered even if the name column falls
+    left of centre.
+
+    Uses fuzzy matching to handle OCR errors like 'SaxyPaxy' → 'SexyPaxy'.
     """
-    # Fast path: username appears as a substring of a single OCR word
+    x_edge = int(img_width  * 0.35) if img_width  else 0
+    y_edge = int(img_height * 0.70) if img_height else 0
+
+    def is_name_card(left, top):
+        # The bottom-left name card is the only element that is simultaneously
+        # far left AND far down. Scoreboard rows are always in the upper half.
+        return img_width and img_height and left < x_edge and top > y_edge
+
+    # Fast path: username appears in a single OCR word
     for i, word in enumerate(words["text"]):
-        if word and username in word.lower():
+        if not word or is_name_card(words["left"][i], words["top"][i]):
+            continue
+        if _username_matches(word, username):
             row_y = words["top"][i] + words["height"][i] // 2
             return row_y, words["left"][i]
 
-    # Slow path: group words by row (quantized to 20px buckets) and check
-    # the full joined line — catches club-tag prefixes and OCR merges
+    # Slow path: group words into rows and check joined text
     rows = {}  # row_key -> list of (left, mid_y, text) tuples
     for i, word in enumerate(words["text"]):
-        if not word or not word.strip():
+        if not word or not word.strip() or is_name_card(words["left"][i], words["top"][i]):
             continue
         mid_y   = words["top"][i] + words["height"][i] // 2
         row_key = round(mid_y / 20) * 20
@@ -194,12 +274,10 @@ def find_username_row(words, username):
 
     for row_key, tokens in sorted(rows.items()):
         tokens.sort(key=lambda t: t[0])  # left-to-right
-        line = " ".join(t[2] for t in tokens).lower()
-        if username in line:
-            # Return the y and the x of the word that holds the username,
-            # or the leftmost word of the row as a fallback
+        line = " ".join(t[2] for t in tokens)
+        if _username_matches(line, username):
             for left, mid_y, word in tokens:
-                if username in word.lower():
+                if _username_matches(word, username):
                     return mid_y, left
             return tokens[0][1], tokens[0][0]
 
@@ -225,6 +303,18 @@ def find_nearest_number(words, col_x, row_y, v_tol=50, h_tol=80):
 MMR_PATTERN = re.compile(r"^[+-]?\d+$")
 
 def find_mmr_delta(words, row_y, username_x, v_tol=50):
+    """
+    Find the MMR delta for the player's row.
+
+    The scoreboard layout is: [delta] [current_mmr] [username]
+    Both numbers sit to the left of username_x, with the delta furthest left.
+
+    Handles a common OCR misread where '+' is read as '4', turning '+13'
+    into '413'. Detection: if the leftmost candidate is large (>= 200) and
+    starts with '4', AND a second number is present (confirming this column
+    is the delta, not the MMR), strip the leading '4' and return the rest
+    as a positive delta.
+    """
     candidates = []
     for i, word in enumerate(words["text"]):
         if not word or not MMR_PATTERN.match(word):
@@ -236,7 +326,20 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
     if not candidates:
         return 0
     candidates.sort(key=lambda c: c[0])
-    return candidates[0][1]
+    leftmost = candidates[0][1]
+
+    # Clean negative or small positive — trust it directly
+    if leftmost < 0 or leftmost < 200:
+        return leftmost
+
+    # Large positive starting with '4': likely a misread '+' sign
+    # e.g. OCR reads '+13' as '413'. Only correct when a second number
+    # (the current MMR) is also present — that confirms we're in the delta column.
+    s = str(leftmost)
+    if s[0] == '4' and len(candidates) >= 2:
+        return int(s[1:])
+
+    return 0
 
 # ── Opponent MMR ─────────────────────────────────────────────────────────────
 
@@ -309,11 +412,11 @@ def detect_mvp(img_rgb, row_y, username_x):
 
 def extract_stats(img_pil, words, username):
     cols = find_header_positions(words)
-    if len(cols) < 4:
-        log(f"  Could not find all column headers (found: {list(cols.keys())})")
+    if len(cols) < 3:
+        log(f"  Could not find enough column headers (found: {list(cols.keys())})")
         return None
 
-    row_y, username_x = find_username_row(words, username)
+    row_y, username_x = find_username_row(words, username, img_pil.width, img_pil.height)
     if row_y is None:
         all_words = sorted(set(w for w in words["text"] if w and w.strip()))
         log(f"  Username '{username}' not found. All OCR words: {all_words}")
@@ -321,6 +424,9 @@ def extract_stats(img_pil, words, username):
 
     stats = {}
     for header in ("GOALS", "ASSISTS", "SAVES", "SHOTS"):
+        if header not in cols:
+            stats[header.lower()] = 0  # absent in 1v1 (no ASSISTS column)
+            continue
         number = find_nearest_number(words, cols[header], row_y)
         stats[header.lower()] = int(number) if number else 0
 
@@ -390,11 +496,14 @@ def check_tesseract():
 # ── Poll loop ─────────────────────────────────────────────────────────────────
 
 def poll_loop():
-    global _tesseract_ok
+    global _tesseract_ok, _latest
     log("RL Capture started. Watching for end screens...")
 
-    end_screen_showing = False
-    last_captured_at   = 0.0
+    end_screen_showing  = False
+    end_screen_captured = False  # True once we get a successful capture for this showing
+    last_captured_at    = 0.0
+    dark_window_active  = False  # True while brightness pre-check is passing
+    last_logged_headers = None   # tracks last header set logged to avoid repeat spam
 
     while True:
         try:
@@ -405,36 +514,72 @@ def poll_loop():
                 continue
 
             img = grab_screen()
+            dark_ok, avg = is_dark_enough_for_ocr(img)
 
-            if not is_dark_enough_for_ocr(img):
-                end_screen_showing = False
+            if not dark_ok:
+                # Screen became bright again — log what happened during the dark window
+                if dark_window_active:
+                    if end_screen_showing and not end_screen_captured:
+                        log(f"  Screen bright again (avg {avg:.0f}) — end screen left without a clean capture")
+                    elif end_screen_showing:
+                        log(f"  Screen bright again (avg {avg:.0f}) — end screen dismissed")
+                    elif last_logged_headers is not None:
+                        log(f"  Screen bright again (avg {avg:.0f}) — OCR ran but no full end screen (last headers: {last_logged_headers})")
+                    dark_window_active  = False
+                    last_logged_headers = None
+                end_screen_showing  = False
+                end_screen_captured = False
                 time.sleep(1)
                 continue
+
+            # Screen is dark enough — run OCR
+            if not dark_window_active:
+                log(f"  Screen darkened (avg brightness {avg:.0f}, threshold {BRIGHTNESS_THRESHOLD}) — running OCR...")
+                dark_window_active  = True
+                last_logged_headers = None  # reset for this new dark window
 
             proc  = preprocess(img)
             words = run_ocr(proc)
             _tesseract_ok = True  # OCR ran without crashing — Tesseract is working
 
-            if is_end_screen(words):
+            found = _find_headers(words)
+
+            if found >= REQUIRED_HEADERS:
+                now = time.time()
                 if not end_screen_showing:
-                    end_screen_showing = True
-                    now = time.time()
+                    end_screen_showing  = True
+                    end_screen_captured = False
                     if now - last_captured_at < 10:
                         log("  End screen detected (debounced)")
                     else:
                         log("  End screen detected — extracting stats...")
-                        result = extract_stats(img, words, username)
-                        if result:
-                            with _latest_lock:
-                                _latest = {"timestamp": int(now), **result}
-                            last_captured_at = now
-                            log(f"  Captured: {result}")
-                        else:
-                            log("  Extraction failed — username not found on scoreboard")
+
+                # Retry every loop until we get a clean capture for this showing.
+                # The debounce only skips the very first attempt if a capture
+                # happened recently (same game shown twice on rematch).
+                if not end_screen_captured and now - last_captured_at >= 10:
+                    result = extract_stats(img, words, username)
+                    if result:
+                        with _latest_lock:
+                            _latest = {"timestamp": int(now * 1000), **result}
+                        last_captured_at    = now
+                        end_screen_captured = True
+                        log(f"  Captured: {result}")
             else:
-                if end_screen_showing:
+                # Log what headers were found, but only when the set changes to avoid spam
+                if found != last_logged_headers:
+                    if found:
+                        log(f"  Partial headers found: {found} — still missing: {REQUIRED_HEADERS - found}")
+                    else:
+                        log(f"  OCR ran on dark screen — no scoreboard headers found (avg {avg:.0f})")
+                    last_logged_headers = found
+
+                if end_screen_showing and not end_screen_captured:
+                    log("  End screen dismissed without a clean capture")
+                elif end_screen_showing:
                     log("  End screen dismissed")
-                end_screen_showing = False
+                end_screen_showing  = False
+                end_screen_captured = False
 
         except Exception as e:
             log(f"  Poll error: {e}")
@@ -445,6 +590,7 @@ def poll_loop():
 
 class CaptureHandler(BaseHTTPRequestHandler):
     def do_GET(self):
+        global _latest
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
 
@@ -467,6 +613,31 @@ class CaptureHandler(BaseHTTPRequestHandler):
             }).encode()
             self._json(payload)
 
+        elif parsed.path == "/inject" and not _IS_FROZEN:
+            # Dev/test only — not available in the distributed .exe.
+            # Simulates a capture result so the browser auto-fill path can be
+            # verified without needing to play a game.
+            # Usage: GET /inject?goals=3&saves=1&shots=5&mmr_delta=8&mvp=true
+            def _qi(key, default=0):
+                try:   return int(params.get(key, [default])[0])
+                except: return default
+            def _qb(key):
+                return str(params.get(key, ["false"])[0]).lower() in ("true", "1", "yes")
+            injected = {
+                "timestamp": int(time.time() * 1000),
+                "goals":     _qi("goals"),
+                "assists":   _qi("assists"),
+                "saves":     _qi("saves"),
+                "shots":     _qi("shots"),
+                "mmr_delta": _qi("mmr_delta"),
+                "mvp":       _qb("mvp"),
+                "opp_mmr":   _qi("opp_mmr") or None,
+            }
+            with _latest_lock:
+                _latest = injected
+            log(f"  [inject] Test data pushed: {injected}")
+            self._json(json.dumps({"ok": True, "injected": injected}).encode())
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -475,6 +646,7 @@ class CaptureHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(payload)
 
