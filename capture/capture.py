@@ -276,15 +276,27 @@ def find_username_row(words, username, img_width=0, img_height=0):
         tokens.sort(key=lambda t: t[0])  # left-to-right
         line = " ".join(t[2] for t in tokens)
         if _username_matches(line, username):
+            # 1) A single token contains the whole username
             for left, mid_y, word in tokens:
                 if _username_matches(word, username):
                     return mid_y, left
-            return tokens[0][1], tokens[0][0]
+            # 2) Two adjacent tokens form the username (OCR splits "SaxyPaxy" → "Saxy" "Paxy")
+            for j in range(len(tokens) - 1):
+                pair = tokens[j][2] + " " + tokens[j + 1][2]
+                if _username_matches(pair, username):
+                    return tokens[j][1], tokens[j][0]
+            # 3) First token that contains any letter — skips pure-number MMR/score columns on left
+            for left, mid_y, word in tokens:
+                if any(c.isalpha() for c in word):
+                    return mid_y, left
+            # 4) Second token as final fallback (leftmost is always the MMR delta number)
+            t = tokens[1] if len(tokens) > 1 else tokens[0]
+            return t[1], t[0]
 
     return None, None
 
 
-def find_nearest_number(words, col_x, row_y, v_tol=50, h_tol=80):
+def find_nearest_number(words, col_x, row_y, v_tol=60, h_tol=120):
     best_word = None
     best_dist = float("inf")
     for i, word in enumerate(words["text"]):
@@ -324,66 +336,72 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
         if abs(wy - row_y) <= v_tol and wx < username_x:
             candidates.append((wx, int(word)))
     if not candidates:
-        return 0
+        return None
     candidates.sort(key=lambda c: c[0])
     leftmost = candidates[0][1]
 
-    # Clean negative or small positive — trust it directly
-    if leftmost < 0 or leftmost < 200:
+    # Clear negative — trust it
+    if leftmost < 0:
         return leftmost
 
-    # Large positive starting with '4': likely a misread '+' sign
-    # e.g. OCR reads '+13' as '413'. Only correct when a second number
-    # (the current MMR) is also present — that confirms we're in the delta column.
     s = str(leftmost)
-    if s[0] == '4' and len(candidates) >= 2:
-        return int(s[1:])
+    # '+' sign OCR-misread as '4': '+8' → '48', '+13' → '413'.
+    # Strip the leading '4' when the result is a plausible small positive delta (1-50).
+    # At Gold rank the per-game delta is almost always 5-25, never 41-50, so false
+    # positives from stripping a legitimate 41-50 value are not a practical risk.
+    if s[0] == '4' and len(s) > 1:
+        stripped = int(s[1:])
+        if 1 <= stripped <= 50:
+            return stripped
 
-    return 0
+    # Small-to-medium value — trust as-is
+    if 0 <= leftmost <= 200:
+        return leftmost
+
+    return None
 
 # ── Opponent MMR ─────────────────────────────────────────────────────────────
 
 def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
     """
-    Find the average MMR of the opponent team only — not including teammates.
+    Find the opponent's MMR from the scoreboard.
 
-    Strategy: collect one MMR value per player row (all players, both teams).
-    Sort rows by y position and find the largest vertical gap — that gap is
-    the visual separator between the two teams on the scoreboard. Split there,
-    identify which half contains the user's row, and average the other half.
+    Looks for numbers in the MMR range (100-3000) in the LEFT half of the
+    screen where player MMR values are typically displayed. Collects one value
+    per player row, finds the largest vertical gap between rows (the team
+    separator), then returns the MMR for the row that is NOT the player's row.
 
-    This works at any resolution because it's gap-relative, not pixel-absolute.
+    Returns None if fewer than 2 distinct rows are found (can't split teams).
     """
-    left_boundary = img_width * 0.45
-    row_buckets = {}  # quantized y -> list of candidate readings
+    # Search only the left 50% of screen — MMR columns sit left of the name column
+    x_limit = img_width * 0.50
+    row_buckets = {}
 
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
             continue
         val = int(word)
-        if val < 100 or val > 3000:
+        if val < 100 or val > 3500:
             continue
         wx = words["left"][i] + words["width"][i] // 2
         wy = words["top"][i] + words["height"][i] // 2
-        if wx > left_boundary:
+        if wx > x_limit:
             continue
         row_key = round(wy / (v_tol * 2)) * (v_tol * 2)
         row_buckets.setdefault(row_key, []).append(val)
 
+    log(f"    opp_mmr search: found {len(row_buckets)} row(s) with MMR-range values: {dict(sorted(row_buckets.items()))}")
+
     if len(row_buckets) < 2:
         return None
 
-    # One MMR per row (best reading wins), sorted top-to-bottom
-    rows = sorted((ry, max(vals)) for ry, vals in row_buckets.items())
-
-    # The largest gap between consecutive rows is where the teams split
+    rows      = sorted((ry, max(vals)) for ry, vals in row_buckets.items())
     gaps      = [rows[i+1][0] - rows[i][0] for i in range(len(rows) - 1)]
-    split_idx = gaps.index(max(gaps))   # index of the last row in team A
+    split_idx = gaps.index(max(gaps))
 
     team_a = rows[:split_idx + 1]
     team_b = rows[split_idx + 1:]
 
-    # The user is in whichever team contains their row_y
     user_in_a = any(abs(ry - player_row_y) <= v_tol * 2 for ry, _ in team_a)
     opponents = team_b if user_in_a else team_a
 
@@ -422,6 +440,7 @@ def extract_stats(img_pil, words, username):
         log(f"  Username '{username}' not found. All OCR words: {all_words}")
         return None
 
+    log(f"    row_y={row_y}  username_x={username_x}  cols={cols}")
     stats = {}
     for header in ("GOALS", "ASSISTS", "SAVES", "SHOTS"):
         if header not in cols:
@@ -429,13 +448,17 @@ def extract_stats(img_pil, words, username):
             continue
         number = find_nearest_number(words, cols[header], row_y)
         stats[header.lower()] = int(number) if number else 0
+        log(f"    {header}: col_x={cols[header]} found={number!r}")
+
+    mmr_delta = find_mmr_delta(words, row_y, username_x)
+    log(f"    mmr_delta raw={mmr_delta}")
 
     return {
         "goals":     stats["goals"],
         "assists":   stats["assists"],
         "saves":     stats["saves"],
         "shots":     stats["shots"],
-        "mmr_delta": find_mmr_delta(words, row_y, username_x),
+        "mmr_delta": mmr_delta if mmr_delta is not None else 0,
         "mvp":       detect_mvp(img_pil, row_y, username_x),
         "opp_mmr":   find_opponent_mmr(words, row_y, img_pil.width),
     }
@@ -471,7 +494,7 @@ def detect_rl_monitor():
         cx = (rect.left + rect.right)  // 2
         cy = (rect.top  + rect.bottom) // 2
 
-        with mss.mss() as sct:
+        with mss.MSS() as sct:
             for idx, m in enumerate(sct.monitors[1:], start=1):
                 if m["left"] <= cx < m["left"] + m["width"] and \
                    m["top"]  <= cy < m["top"]  + m["height"]:
