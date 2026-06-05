@@ -364,19 +364,16 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
 
 def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
     """
-    Find the opponent's MMR from the scoreboard.
+    Find the opponent's current MMR from the scoreboard.
 
-    Looks for numbers in the MMR range (100-3000) in the LEFT half of the
-    screen where player MMR values are typically displayed. Collects one value
-    per player row, finds the largest vertical gap between rows (the team
-    separator), then returns the MMR for the row that is NOT the player's row.
+    No horizontal boundary — MMR values can appear anywhere on the scoreboard.
+    Collects all numbers in the plausible MMR range (100-3500) that are NOT on
+    the player's own row, then picks the value closest in Y to the player row.
 
-    Returns None if fewer than 2 distinct rows are found (can't split teams).
+    Returns None if nothing suitable is found.
     """
-    # Search only the left 50% of screen — MMR columns sit left of the name column
-    x_limit = img_width * 0.50
-    row_buckets = {}
-
+    # All numbers in MMR range, anywhere on screen
+    candidates = []  # (wx, wy, val)
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
             continue
@@ -385,30 +382,38 @@ def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
             continue
         wx = words["left"][i] + words["width"][i] // 2
         wy = words["top"][i] + words["height"][i] // 2
-        if wx > x_limit:
-            continue
+        candidates.append((wx, wy, val))
+
+    log(f"    opp_mmr scan: {len(candidates)} numbers in range 100-3500: {[(x, y, v) for x, y, v in candidates]}")
+
+    if not candidates:
+        return None
+
+    # Exclude numbers that are ON the player's own row
+    off_row = [(wx, wy, val) for wx, wy, val in candidates if abs(wy - player_row_y) > v_tol]
+
+    log(f"    opp_mmr off-player-row: {[(x, y, v) for x, y, v in off_row]}")
+
+    if not off_row:
+        return None
+
+    # Bucket by row (quantized y) and pick the best value per row
+    row_buckets = {}
+    for wx, wy, val in off_row:
         row_key = round(wy / (v_tol * 2)) * (v_tol * 2)
-        row_buckets.setdefault(row_key, []).append(val)
+        row_buckets.setdefault(row_key, []).append((wx, val))
 
-    log(f"    opp_mmr search: found {len(row_buckets)} row(s) with MMR-range values: {dict(sorted(row_buckets.items()))}")
+    # From each bucket pick the largest value (most likely to be the MMR, not score/stat)
+    row_mmrs = []
+    for ry, entries in sorted(row_buckets.items()):
+        best_val = max(v for _, v in entries)
+        row_mmrs.append((ry, best_val))
 
-    if len(row_buckets) < 2:
-        return None
+    log(f"    opp_mmr row candidates: {row_mmrs}")
 
-    rows      = sorted((ry, max(vals)) for ry, vals in row_buckets.items())
-    gaps      = [rows[i+1][0] - rows[i][0] for i in range(len(rows) - 1)]
-    split_idx = gaps.index(max(gaps))
-
-    team_a = rows[:split_idx + 1]
-    team_b = rows[split_idx + 1:]
-
-    user_in_a = any(abs(ry - player_row_y) <= v_tol * 2 for ry, _ in team_a)
-    opponents = team_b if user_in_a else team_a
-
-    if not opponents:
-        return None
-    mmrs = [mmr for _, mmr in opponents]
-    return round(sum(mmrs) / len(mmrs))
+    # Return the row closest to player_row_y (the opponent's row in 1v1)
+    row_mmrs.sort(key=lambda r: abs(r[0] - player_row_y))
+    return row_mmrs[0][1]
 
 # ── MVP detection ─────────────────────────────────────────────────────────────
 
