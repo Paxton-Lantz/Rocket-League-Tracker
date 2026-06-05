@@ -172,14 +172,34 @@ def is_end_screen(words):
 
 
 def find_header_positions(words):
+    # Track SCORE and PING in addition to stat columns so compute_column_boundaries
+    # can set the correct left edge of GOALS and right edge of SHOTS.
+    _TRACKED = _ALL_HEADERS | {"SCORE", "PING"}
     cols = {}
     for i, word in enumerate(words["text"]):
         w = word.upper() if word else ""
-        if w in _ALL_HEADERS and int(words["conf"][i]) > 30:
+        if w in _TRACKED and int(words["conf"][i]) > 30:
             if w not in cols:
                 cx = words["left"][i] + words["width"][i] // 2
                 cols[w] = cx
     return cols
+
+
+def compute_column_boundaries(cols, img_width):
+    """
+    Returns {header: (left_x, right_x)} for every column in cols.
+    Boundaries are midpoints between adjacent column centers so each value
+    can only belong to one column — no bleed-over into neighbours.
+    """
+    if not cols:
+        return {}
+    ordered = sorted(cols.items(), key=lambda kv: kv[1])
+    bounds = {}
+    for j, (header, cx) in enumerate(ordered):
+        left  = (ordered[j-1][1] + cx) // 2 if j > 0                else 0
+        right = (cx + ordered[j+1][1]) // 2 if j < len(ordered) - 1 else img_width
+        bounds[header] = (left, right)
+    return bounds
 
 
 def _edit_distance(a, b):
@@ -296,19 +316,30 @@ def find_username_row(words, username, img_width=0, img_height=0):
     return None, None
 
 
-def find_nearest_number(words, col_x, row_y, v_tol=60, h_tol=120):
+def find_nearest_number(words, col_x, row_y, v_tol=60, x_min=0, x_max=99999):
+    """
+    Find the digit string closest to (col_x, row_y) within the column's
+    horizontal span [x_min, x_max].  Hard boundaries mean a value can only
+    ever be attributed to the column it physically sits under.
+
+    Also accepts a lone 'O' or 'o' as '0' — Tesseract frequently misreads
+    the digit zero as the letter O in RL's stylised scoreboard font.
+    """
     best_word = None
     best_dist = float("inf")
     for i, word in enumerate(words["text"]):
-        if not word or not word.isdigit():
+        if not word:
+            continue
+        text = "0" if word in ("O", "o") else word
+        if not text.isdigit():
             continue
         wx = words["left"][i] + words["width"][i] // 2
         wy = words["top"][i] + words["height"][i] // 2
-        if abs(wy - row_y) <= v_tol and abs(wx - col_x) <= h_tol:
+        if abs(wy - row_y) <= v_tol and x_min <= wx <= x_max:
             dist = abs(wx - col_x) + abs(wy - row_y)
             if dist < best_dist:
                 best_dist = dist
-                best_word = word
+                best_word = text
     return best_word
 
 
@@ -440,15 +471,17 @@ def extract_stats(img_pil, words, username):
         log(f"  Username '{username}' not found. All OCR words: {all_words}")
         return None
 
+    col_bounds = compute_column_boundaries(cols, img_pil.width)
     log(f"    row_y={row_y}  username_x={username_x}  cols={cols}")
     stats = {}
     for header in ("GOALS", "ASSISTS", "SAVES", "SHOTS"):
         if header not in cols:
             stats[header.lower()] = 0  # absent in 1v1 (no ASSISTS column)
             continue
-        number = find_nearest_number(words, cols[header], row_y)
+        x_min, x_max = col_bounds[header]
+        number = find_nearest_number(words, cols[header], row_y, x_min=x_min, x_max=x_max)
         stats[header.lower()] = int(number) if number else 0
-        log(f"    {header}: col_x={cols[header]} found={number!r}")
+        log(f"    {header}: col_x={cols[header]} bounds=[{x_min},{x_max}] found={number!r}")
 
     mmr_delta = find_mmr_delta(words, row_y, username_x)
     log(f"    mmr_delta raw={mmr_delta}")
