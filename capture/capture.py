@@ -362,18 +362,19 @@ def find_mmr_delta(words, row_y, username_x, v_tol=50):
 
 # ── Opponent MMR ─────────────────────────────────────────────────────────────
 
-def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
+def find_opponent_mmr(words, player_row_y, username_x, v_tol=40):
     """
-    Find the opponent's current MMR from the scoreboard.
+    Find the average MMR of the opponent team.
 
-    No horizontal boundary — MMR values can appear anywhere on the scoreboard.
-    Collects all numbers in the plausible MMR range (100-3500) that are NOT on
-    the player's own row, then picks the value closest in Y to the player row.
+    Scoreboard layout: [delta] [current_MMR] [rank_icon] [name] [score] [goals]...
+    Current MMR values sit LEFT of the name column (x < username_x).
+    Score/stat values sit RIGHT of the name column and are excluded by the boundary.
 
-    Returns None if nothing suitable is found.
+    Collects one MMR per player row, finds the largest vertical gap between rows
+    (the visual separator between the two teams), splits there, then returns the
+    average MMR of whichever half does NOT contain the player's row.
     """
-    # All numbers in MMR range, anywhere on screen
-    candidates = []  # (wx, wy, val)
+    row_buckets = {}
     for i, word in enumerate(words["text"]):
         if not word or not word.isdigit():
             continue
@@ -382,38 +383,32 @@ def find_opponent_mmr(words, player_row_y, img_width, v_tol=40):
             continue
         wx = words["left"][i] + words["width"][i] // 2
         wy = words["top"][i] + words["height"][i] // 2
-        candidates.append((wx, wy, val))
-
-    log(f"    opp_mmr scan: {len(candidates)} numbers in range 100-3500: {[(x, y, v) for x, y, v in candidates]}")
-
-    if not candidates:
-        return None
-
-    # Exclude numbers that are ON the player's own row
-    off_row = [(wx, wy, val) for wx, wy, val in candidates if abs(wy - player_row_y) > v_tol]
-
-    log(f"    opp_mmr off-player-row: {[(x, y, v) for x, y, v in off_row]}")
-
-    if not off_row:
-        return None
-
-    # Bucket by row (quantized y) and pick the best value per row
-    row_buckets = {}
-    for wx, wy, val in off_row:
+        if wx >= username_x:   # score/stat columns are right of the name — skip them
+            continue
         row_key = round(wy / (v_tol * 2)) * (v_tol * 2)
-        row_buckets.setdefault(row_key, []).append((wx, val))
+        row_buckets.setdefault(row_key, []).append(val)
 
-    # From each bucket pick the largest value (most likely to be the MMR, not score/stat)
-    row_mmrs = []
-    for ry, entries in sorted(row_buckets.items()):
-        best_val = max(v for _, v in entries)
-        row_mmrs.append((ry, best_val))
+    log(f"    opp_mmr: {len(row_buckets)} row(s) with MMR-range values left of x={username_x}: {dict(sorted(row_buckets.items()))}")
 
-    log(f"    opp_mmr row candidates: {row_mmrs}")
+    if len(row_buckets) < 2:
+        return None
 
-    # Return the row closest to player_row_y (the opponent's row in 1v1)
-    row_mmrs.sort(key=lambda r: abs(r[0] - player_row_y))
-    return row_mmrs[0][1]
+    # One MMR value per row (take the largest — delta values are always < 100 so filtered out)
+    rows = sorted((ry, max(vals)) for ry, vals in row_buckets.items())
+
+    # Largest gap between consecutive rows = team separator
+    gaps      = [rows[i+1][0] - rows[i][0] for i in range(len(rows) - 1)]
+    split_idx = gaps.index(max(gaps))
+
+    team_a = rows[:split_idx + 1]
+    team_b = rows[split_idx + 1:]
+
+    user_in_a = any(abs(ry - player_row_y) <= v_tol * 2 for ry, _ in team_a)
+    opponents = team_b if user_in_a else team_a
+
+    if not opponents:
+        return None
+    return round(sum(mmr for _, mmr in opponents) / len(opponents))
 
 # ── MVP detection ─────────────────────────────────────────────────────────────
 
@@ -465,7 +460,7 @@ def extract_stats(img_pil, words, username):
         "shots":     stats["shots"],
         "mmr_delta": mmr_delta if mmr_delta is not None else 0,
         "mvp":       detect_mvp(img_pil, row_y, username_x),
-        "opp_mmr":   find_opponent_mmr(words, row_y, img_pil.width),
+        "opp_mmr":   find_opponent_mmr(words, row_y, username_x),
     }
 
 # ── Monitor auto-detection ───────────────────────────────────────────────────
